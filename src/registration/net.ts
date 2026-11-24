@@ -14,6 +14,8 @@ import { CAP } from '../core/Constants';
 import { query, type BattleWorld } from '../ecs/bit/adapter';
 import { NetId, PlayerId, PlayerTag } from '../ecs/bit/components';
 import type { GameEventBus } from '../ecs/bridge/GameEventBus';
+// B1 只导出注入端口、不 import net/*；由本侧载文件在 bootstrap 时反向注入真实注册表。
+import { setEntityRegistry } from '../ecs/systems/LifecycleSystems';
 import { EntityRegistry } from '../net/EntityRegistry';
 import { NetInputBuffer } from '../net/messages';
 import { FullSnapshotStrategy, configureNetRuntime, installNetSystems } from '../net/NetSystems';
@@ -58,6 +60,9 @@ export function register(app: App): void {
 
     // 同一世界只绑定一次；后续 B1 重开换 world 时这里是唯一的重建点。
     const registry = new EntityRegistry(world, CAP);
+    // 让 SpawnSystem 的 NetId 分配、AISystem 的 targetNetId 解析、DeadRecycleSystem 的回收
+    // 都走同一张真实三向表，而不是 B1 的 Standalone 兜底分配器。
+    setEntityRegistry(registry);
     const hasPlayerTerms = world.components.indexOf(PlayerTag) >= 0
       && world.components.indexOf(NetId) >= 0
       && world.components.indexOf(PlayerId) >= 0;

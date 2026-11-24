@@ -24,11 +24,16 @@ function escapeXml(value: string): string {
 export class PortraitFactory {
   private readonly cache = new Map<string, string>();
 
+  /** 裸 SVG → 可作为 <img src> 的 data URL；不转换则浏览器会当成相对路径请求而 404。 */
+  private toDataUrl(svg: string): string {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
+
   /** 按武将配置取头像 data URL。 */
   dataUrlFor(general: GeneralDef): string {
     const cached = this.cache.get(general.id);
     if (cached !== undefined) return cached;
-    const url = this.build(general.name, general.faction, general.art);
+    const url = this.toDataUrl(this.build(general.name, general.faction, general.art));
     this.cache.set(general.id, url);
     return url;
   }
@@ -37,11 +42,12 @@ export class PortraitFactory {
   dataUrlById(id: string, faction: GeneralDef['faction'] = 'qun'): string {
     const cached = this.cache.get(id);
     if (cached !== undefined) return cached;
-    const url = this.build(id, faction, fallbackArt(id, faction));
+    const url = this.toDataUrl(this.build(id, faction, fallbackArt(id, faction)));
     this.cache.set(id, url);
     return url;
   }
 
+  /** 裸 SVG 字符串，供需要直接内联矢量的调用方使用（不缓存）。 */
   svgFor(general: GeneralDef): string {
     return this.build(general.name, general.faction, general.art);
   }

@@ -16,6 +16,7 @@
 import { assert, CAP, WushuangError } from '../core/Constants';
 import { add, has, query, spawn, type BattleWorld } from '../ecs/bit/adapter';
 import {
+  AIState,
   ALL_COMPONENTS,
   ActiveEffect,
   Attack,
@@ -151,6 +152,8 @@ export const SNAPSHOT_COLUMNS: readonly SnapshotColumn[] = [
   defineColumn(NetId, ['value']),
   defineColumn(Owner, ['netId', 'playerId']),
   defineColumn(SpawnTick, ['value']),
+  // 末尾追加：保持既有列的 ordinal/bit 不变，避免破坏已上线协议。
+  defineColumn(AIState, ['state', 'timer', 'target', 'policy', 'retargetTimer', 'targetNetId']),
 ].sort((a, b) => a.bit - b.bit);
 
 /** presence / netIds / 列块的起始偏移及总长度。 */
@@ -397,14 +400,14 @@ export interface PositionColumn {
 }
 
 export function getPositionColumn(snap: Snapshot): PositionColumn | null {
-  const positionIndex = ALL_COMPONENTS.indexOf(Position);
-  const bit = 1 << positionIndex;
-  if ((snap.mask & bit) === 0) return null;
+  // 列 bit 按 SNAPSHOT_COLUMNS 内 ordinal 分配，不能直接用 ALL_COMPONENTS 下标推算。
+  const column = SNAPSHOT_COLUMNS.find((candidate) => candidate.component === Position);
+  if (column === undefined || (snap.mask & column.bit) === 0) return null;
   const view = new DataView(snap.data);
   const count = view.getUint32(OFF_COUNT, true);
   const layout = snapshotLayout(snap.mask, count);
   return {
-    start: layout.starts[positionIndex],
+    start: layout.starts[column.componentIndex],
     stride: 16, // Position{x,y,px,py} 全为 f32
     count,
     xOffset: 0,
