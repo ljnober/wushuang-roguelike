@@ -6,7 +6,7 @@
  * 运行层 EffectTriggerSystem 只做掩码短路；ActionDispatchSystem 按 op 数字下标 O(1) 分派。
  * 运行期零 addEntity、零闭包创建、零字符串查找。
  */
-import { CAP } from '../../core/Constants';
+import { CAP, TICK_DT } from '../../core/Constants';
 import type { ActionOp, EffectDef, TriggerType } from '../../data/types';
 import type { Eid } from '../bit/types';
 import { add, has, query, queryNoCommit } from '../bit/adapter';
@@ -435,17 +435,17 @@ export class EffectTriggerSystem {
 
   run(state: SimState, tick: number): void {
     void tick;
+    const entities = queryNoCommit(state.world, this.terms);
     const flags = EffectContext.flags[0];
-    if (flags === 0) {
-      return;
-    }
-    const entities = query(state.world, this.terms);
     for (let i = 0; i < entities.length; i++) {
       const eid = entities[i];
-      if ((effectMask.value[eid] & flags) === 0) {
+      // 冷却必须逐 tick 递减：ActionDispatchSystem 只负责写入 0.1s 冷却，
+      // 若这里不推进，效果在首次触发后会永久停在 Cooldown，后续施法全部空转。
+      if (ActiveEffect.cd[eid] > 0) {
+        ActiveEffect.cd[eid] = Math.max(0, ActiveEffect.cd[eid] - TICK_DT);
         continue;
       }
-      if (ActiveEffect.cd[eid] > 0) {
+      if (flags === 0 || (effectMask.value[eid] & flags) === 0) {
         continue;
       }
       ActiveEffect.state[eid] = 1;

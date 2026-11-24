@@ -73,6 +73,12 @@ export interface BattleSessionLike {
   nextNetId: number;
   bossSpawned: number;
   result: number;
+  /** HUD 连续量：击杀/积分/展示等级(1-based)/当前经验/升级所需经验。 */
+  kills: number;
+  score: number;
+  level: number;
+  exp: number;
+  expNext: number;
   /** 1=战斗进行中；0=菜单/结算期间，全部 B1 系统跳过。 */
   running: number;
   /** 本局第 0 tick 对应的 scheduler 全局 tick。 */

@@ -48,7 +48,9 @@ function mkEffect(id: string, trigger: TriggerType, parts: readonly EffectPart[]
 
 /** 效果表：每个技能对应一个 onCast 效果；另含通用 onHit/onKill 效果。 */
 export const EFFECT_DEFS: readonly EffectDef[] = [
-  mkEffect('eff_basic_attack', 'onHit', [{ op: 'damage', params: [24, 90, 1] }]),
+  // 普攻必须在施法瞬间结算：它是第一次伤害的来源。若留作 onHit，
+  // 没有任何命中事件能启动链路，效果编译后永远等不到触发（无法击杀怪物）。
+  mkEffect('eff_basic_attack', 'onCast', [{ op: 'damage', params: [24, 90, 1] }]),
   mkEffect('eff_sweeping_slash', 'onCast', [
     { op: 'area', params: [110, 0.2, 1.2] },
     { op: 'damage', params: [42, 110, 1] },

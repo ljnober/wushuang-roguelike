@@ -16,12 +16,17 @@ export class LocalHumanSource implements IControlSource {
 
   private readonly playerId: number;
   private readonly bus: CommandBus;
+  /** 自动模式下代管本席位的 AI 源；默认 null 表示纯真人操作。 */
+  private readonly autoSource: IControlSource | null;
+  /** 由 AutoToggle 命令驱动，默认手动，避免改变既有确定性回放基线。 */
+  private auto = false;
   /** 预分配 drain 缓冲，容量与命令总线一致，避免热路径分配。 */
   private readonly buffer: Command[] = [];
 
-  constructor(cmdBus: CommandBus, playerId: number) {
+  constructor(cmdBus: CommandBus, playerId: number, autoSource: IControlSource | null = null) {
     this.bus = cmdBus;
     this.playerId = playerId;
+    this.autoSource = autoSource;
     for (let i = 0; i < COMMAND_QUEUE_SIZE; i++) {
       this.buffer.push({ type: CommandType.Move, playerId: 0, a: 0, b: 0, c: 0, seq: 0 });
     }
@@ -58,6 +63,7 @@ export class LocalHumanSource implements IControlSource {
           break;
         }
         case CommandType.AutoToggle:
+          this.auto = cmd.a !== 0;
           out.buttons |= AUTO_TOGGLE_BIT;
           break;
         case CommandType.Pause:
@@ -70,5 +76,12 @@ export class LocalHumanSource implements IControlSource {
     }
     out.tick = tick;
     out.seq = maxSeq;
+
+    // 自动模式：命令仍然被消费（保证 AutoToggle 能随时切回手动），
+    // 但本帧最终输入由同席位的 AI 源产出，实现"自动战斗"而不是空转。
+    if (this.auto && this.autoSource !== null) {
+      this.autoSource.poll(tick, out);
+      out.seq = maxSeq;
+    }
   }
 }

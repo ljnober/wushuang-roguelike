@@ -31,6 +31,7 @@ import { DamageFlag } from '../components/core';
 import { TriggerBit } from '../components/effect';
 import { FactionValue } from '../components/core';
 import { sweepCircleCircle, type SweepHit } from '../../engine/SweptCollision';
+import { battleSession } from './LifecycleSystems';
 import type { SimState } from '../scheduler';
 
 /** 受击无敌帧：设计 §8.1 固定 0.4s。 */
@@ -103,6 +104,8 @@ export function applyDamage(
     if (!has(world, target, Dead)) {
       add(world, target, Dead);
       EffectContext.flags[0] |= TriggerBit.onKill | TriggerBit.onDeath;
+      // 会话击杀数按 Kill 事件统一累加（含影子玩家击杀），供 HUD 逐帧同步。
+      battleSession(state).kills += 1;
       state.buses.events.emit(GameEventType.Kill, target, source, dealt);
       if (has(world, target, PlayerTag)) {
         state.buses.events.emit(GameEventType.Death, target, source, 0);

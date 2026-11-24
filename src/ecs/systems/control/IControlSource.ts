@@ -207,8 +207,10 @@ export function spawnLocalPlayers(
     nextNetId++;
 
     // 只在这里分派控制源：真人与影子组件完全相同。
+    // 真人席位额外持有一个同席位 AI 源，收到 AutoToggle(1) 后自动代管，
+    // 收到 AutoToggle(0) 后立即恢复真人输入；影子席位始终为 AI。
     const source: IControlSource = playerId === 0
-      ? new LocalHumanSource(cmdBus, playerId)
+      ? new LocalHumanSource(cmdBus, playerId, new AIShadowPlayerSystem({ world, config, seed, playerId }))
       : new AIShadowPlayerSystem({ world, config, seed, playerId });
     registry.bind(eid, source);
     ControlSource.ref[eid] = playerId;

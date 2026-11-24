@@ -59,6 +59,8 @@ export interface SceneDeps {
   readonly viewport: Viewport;
   readonly battleLauncher: BattleLauncher;
   setQuality(quality: QualityLevel): void;
+  /** 切换本地席位的自动/手动控制（下发 AutoToggle 命令）。 */
+  setControlMode(mode: 'auto' | 'manual'): void;
   resetBattle(): void;
 }
 
@@ -361,6 +363,7 @@ export class SettingsScene extends OverlayScene {
         settings.controlMode = mode;
         this.deps.cards.setAutoMode(mode === 'auto');
         this.deps.touch.setAutoMode(mode === 'auto');
+        this.deps.setControlMode(mode);
         this.deps.saveSystem.save(this.deps.save);
         this.render();
       });

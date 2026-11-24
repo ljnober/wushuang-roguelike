@@ -26,6 +26,10 @@ import { TriggerBit } from '../components/effect';
 import { InputButton } from '../components/view';
 import type { SimState } from '../scheduler';
 
+/** 所有主动技能键都进入施法管线；AutoToggle 等状态位不算施法。 */
+const CAST_BUTTON_MASK =
+  InputButton.Basic | InputButton.Skill1 | InputButton.Skill2 | InputButton.Skill3 | InputButton.Dodge;
+
 /** 传送 / 生成 / 和解后调用：清插值拖影，让 px/py 对齐当前 x/y。 */
 export function snapInterpolation(world: BattleWorld, eid: Eid): void {
   if (!has(world, eid, Position)) {
@@ -80,7 +84,7 @@ export class MovementSystem {
       if (ax !== 0 || ay !== 0) {
         Heading.angle[eid] = Math.atan2(ay, ax);
       }
-      if ((InputCmd.buttons[eid] & InputButton.Basic) !== 0) {
+      if ((InputCmd.buttons[eid] & CAST_BUTTON_MASK) !== 0) {
         EffectContext.flags[0] |= TriggerBit.onCast;
         EffectContext.source[0] = eid >>> 0;
       }

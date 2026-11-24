@@ -58,6 +58,21 @@ export function resetProgressionRuntime(): void {
 }
 resetProgressionRuntime();
 
+/**
+ * 把成长运行态写入会话，供 HUD 逐帧同步。只处理本地玩家席位，
+ * 展示等级为 1-based（模块内 levelByPlayer 为 0-based）。
+ */
+function syncLocalProgress(state: SimState, playerId: number): void {
+  const session = battleSession(state);
+  if (playerId !== session.localPlayerId) {
+    return;
+  }
+  session.level = levelByPlayer[playerId] + 1;
+  session.exp = expByPlayer[playerId];
+  session.expNext = expNeedByPlayer[playerId];
+  session.score = session.kills * 10 + session.level * 100;
+}
+
 export function getPlayerLevel(playerId: number): number {
   return levelByPlayer[playerId] ?? 0;
 }
@@ -146,9 +161,11 @@ export class PickupSystem {
         const playerId = PlayerId.value[player];
         if (Pickup.kind[item] === PICKUP_EXP) {
           expByPlayer[playerId] += Pickup.amount[item];
+          state.buses.events.emit(GameEventType.Pickup, playerId, PICKUP_EXP, Pickup.amount[item]);
         } else {
           state.buses.events.emit(GameEventType.Pickup, playerId, Pickup.kind[item], Pickup.cfgId[item]);
         }
+        syncLocalProgress(state, playerId);
         if (!has(world, item, Dead)) {
           add(world, item, Dead);
         }
@@ -188,13 +205,18 @@ export class ExpSystem {
         choicesByPlayer[playerId * 3 + c] = this.rng.int(9);
       }
       selectedByPlayer[playerId] = 0;
+      // 三选一数据仍在 choicesByPlayer，事件槽改为 HUD 可直接消费的语义：
+      // a=等级(1-based)、b=升级所需经验、c=当前经验。
       state.buses.events.emit(
         GameEventType.LevelUp,
-        playerId,
-        choicesByPlayer[playerId * 3],
-        choicesByPlayer[playerId * 3 + 1],
+        levelByPlayer[playerId] + 1,
+        expNeedByPlayer[playerId],
+        expByPlayer[playerId],
       );
+      syncLocalProgress(state, playerId);
     }
+    // 每 tick 末尾刷新积分，保证击杀后即使本 tick 无拾取/升级也与 HUD 同步。
+    syncLocalProgress(state, session.localPlayerId);
   }
 }
 

@@ -6,7 +6,7 @@
  * 运行态对象在此一次性初始化，B2 的 NetSessionManager / EntityRegistry 可随后接管。
  */
 import type { App } from '../app/App';
-import { EFFECT_ENTITY_BASE, SNAPSHOT_POOL_SIZE, TICK_RATE } from '../core/Constants';
+import { EFFECT_ENTITY_BASE, EXP_CURVE, SNAPSHOT_POOL_SIZE, TICK_RATE } from '../core/Constants';
 import { loadConfig } from '../core/Config';
 import { Rng } from '../core/Rng';
 import type { GameConfig } from '../data/types';
@@ -143,6 +143,13 @@ export function createBattleState(options: CreateStateOptions = {}): SimState {
       nextNetId: 1 + shadowCount + 1,
       bossSpawned: 0,
       result: 0,
+      // HUD 连续量：本局击杀/积分/等级/经验，由战斗系统逐 tick 回写。
+      // expNext 与 resetProgressionRuntime 同口径：EXP_CURVE(1)。
+      kills: 0,
+      score: 0,
+      level: 1,
+      exp: 0,
+      expNext: EXP_CURVE(1),
       // 直接驱动（测试 / DeterministicSim）默认处于战斗进行中。
       running: 1,
       startTick: 0,

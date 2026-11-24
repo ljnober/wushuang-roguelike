@@ -227,18 +227,14 @@ export function register(app: App): void {
         if (resultShown) return;
         resultShown = true;
         const shown = hud !== null ? hud.snapshot() : null;
+        // HUD.score 已由 session.score 按同一公式逐 tick 回写；
+        // 这里不再二次叠加，否则结算分会是局内显示的两倍。
+        const fallbackScore = (shown?.kills ?? 0) * 10 + (shown?.level ?? 1) * 100;
         const payload: ResultPayload = {
           victory: event.type === GameEventType.Victory,
           mode: 'campaign_8min',
           generalId: save.meta.selectedGeneral,
-          score: Math.max(
-            0,
-            Math.round(
-              shown !== null
-                ? shown.score + shown.kills * 10 + shown.level * 100
-                : 0,
-            ),
-          ),
+          score: Math.max(0, Math.round(shown !== null ? shown.score : fallbackScore)),
           kills: shown?.kills ?? 0,
           level: shown?.level ?? 1,
           elapsed: shown?.elapsed ?? 0,
@@ -289,6 +285,14 @@ export function register(app: App): void {
     if (session !== null && typeof session.startBattle === 'function') {
       session.startBattle(request.mode, request.generalId);
     }
+    // startBattle 会替换命令总线，因此自动/Manual 状态必须在开战后重新下发，
+    // 否则默认 auto 存档只在 UI 上显示"自动"，ECS 仍按手动空转。
+    pushCommand(
+      CommandType.AutoToggle,
+      save.meta.settings.controlMode === 'auto' ? 1 : 0,
+      0,
+      0,
+    );
   };
 
   const deps: SceneDeps = {
@@ -305,6 +309,9 @@ export function register(app: App): void {
     viewport: runtime.viewport,
     battleLauncher,
     setQuality,
+    setControlMode: (mode: 'auto' | 'manual'): void => {
+      pushCommand(CommandType.AutoToggle, mode === 'auto' ? 1 : 0, 0, 0);
+    },
     resetBattle: () => {
       runtime.pools?.releaseAll();
       runtime.viewport.reset();

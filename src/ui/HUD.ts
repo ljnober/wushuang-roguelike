@@ -203,10 +203,16 @@ export class HUD implements HUDLike {
   onEvent(event: GameEvent): void {
     switch (event.type) {
       case GameEventType.Kill:
-        this.setKills(this.kills + Math.max(0, Math.round(event.b)));
+        // Kill 事件的 b 是击杀者 eid、c 是伤害值，都不是击杀数：
+        // 每次事件固定 +1，避免影子玩家(eid 2/3)把计数加成 2/3。
+        this.setKills(this.kills + 1);
         break;
       case GameEventType.LevelUp:
-        this.setLevel(Math.round(event.a), 0, event.b > 0 ? event.b : this.expNext);
+        this.setLevel(
+          Math.round(event.a),
+          event.c > 0 ? event.c : 0,
+          event.b > 0 ? event.b : this.expNext,
+        );
         this.toast(`升级！Lv.${Math.round(event.a)}`);
         break;
       case GameEventType.BossWarn:
