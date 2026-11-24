@@ -275,6 +275,9 @@ export class ResultScene extends OverlayScene {
 
   onEnter(ctx: SceneContextLike): void {
     super.onEnter(ctx);
+    // P0：升级三选一是常驻 #app 的独立覆盖层，不属于任何场景 overlay。
+    // 终局时若仍有未点选的弹窗，它会拦截结算按钮的真实点击；必须在进入结算页时真正隐藏。
+    this.deps.cards.hide();
     const payload = ctx.payload as ResultPayload | undefined;
     const result: ResultPayload = payload ?? {
       victory: false,

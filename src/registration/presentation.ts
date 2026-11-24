@@ -235,6 +235,9 @@ export function register(app: App): void {
         if (resultShown) return;
         resultShown = true;
         const shown = hud !== null ? hud.snapshot() : null;
+        // P2：HUD.snapshot().elapsed 取自已 Math.floor 的 lastTime，终局帧可能尚未刷新到整秒；
+        // 结算时长直接取会话权威 elapsed，展示时由面板 Math.floor，避免少 1 秒。
+        const sessionState = app.state.session as unknown as { elapsed?: number } | null;
         // HUD.score 已由 session.score 按同一公式逐 tick 回写；
         // 这里不再二次叠加，否则结算分会是局内显示的两倍。
         const fallbackScore = (shown?.kills ?? 0) * 10 + (shown?.level ?? 1) * 100;
@@ -245,7 +248,7 @@ export function register(app: App): void {
           score: Math.max(0, Math.round(shown !== null ? shown.score : fallbackScore)),
           kills: shown?.kills ?? 0,
           level: shown?.level ?? 1,
-          elapsed: shown?.elapsed ?? 0,
+          elapsed: sessionState?.elapsed ?? shown?.elapsed ?? 0,
           damage: 0,
         };
         app.sceneManager.switchTo('result', payload);
@@ -273,6 +276,7 @@ export function register(app: App): void {
 
   const battleLauncher: BattleLauncher = (request) => {
     resultShown = false;
+    cards?.hide(); // P0：避免上一局的未点选弹窗带入新一局
     hud?.reset();
     runtime.pools?.releaseAll();
     runtime.viewport.reset();
@@ -324,6 +328,7 @@ export function register(app: App): void {
       runtime.pools?.releaseAll();
       runtime.viewport.reset();
       resultShown = false;
+      cards?.hide(); // P0：场景重开路径同样清理常驻升级弹窗
     },
   };
 
