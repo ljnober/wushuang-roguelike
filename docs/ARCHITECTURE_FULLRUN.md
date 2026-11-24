@@ -484,7 +484,7 @@ sequenceDiagram
 | M14 | 结果不确定导致 flaky | node 两次复跑逐字段一致（spike 已证）；测试固定 seed/起点并断言精确值 | node spec |
 | M15 | 结算后无法再来一局 | 结算面板 `.result-panel button` 含"再来一局/查看排行/返回主菜单"且可点击 | browser result spec |
 | M16 | 终局升级弹窗遮挡结算按钮、重开不归零 | 快进期间不点升级卡（HUD level>1），进结算页后 `.overlay.ws-levelup` hidden；真实 `click()`「再来一局」→选将→出征，新局 kills=0、elapsed≈0 且 20s 内 kills>0 | browser result spec |
-| M17 | 结算时长少 1 秒 | 结算 lines 时长取 `session.elapsed`（允许 ≤1s 误差）并等于 `Math.floor(session.elapsed)`，不取已 floor 的 HUD.lastTime | browser result spec |
+| M17 | 结算时长/面板与权威 session 不同帧（少 1 秒、分数滞后一帧） | 结算 lines 四项统计取 `session.elapsed/score/kills/level`，HUD 仅 fallback；时长等于 `Math.floor(session.elapsed)`（允许 ≤1s 误差），`panel.score == HUD.score == session.score` 且 ≠2× | browser result spec |
 
 ---
 

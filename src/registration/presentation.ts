@@ -235,19 +235,24 @@ export function register(app: App): void {
         if (resultShown) return;
         resultShown = true;
         const shown = hud !== null ? hud.snapshot() : null;
-        // P2：HUD.snapshot().elapsed 取自已 Math.floor 的 lastTime，终局帧可能尚未刷新到整秒；
-        // 结算时长直接取会话权威 elapsed，展示时由面板 Math.floor，避免少 1 秒。
-        const sessionState = app.state.session as unknown as { elapsed?: number } | null;
-        // HUD.score 已由 session.score 按同一公式逐 tick 回写；
-        // 这里不再二次叠加，否则结算分会是局内显示的两倍。
+        // 结算面板四项统计一律以会话权威状态为准，HUD 快照仅作 fallback：
+        // HUD 由事件与 updateFromWorld 在不同时机刷新，终局当帧可能比 session 滞后一帧；
+        // HUD.snapshot().elapsed 更是已 Math.floor 的 lastTime，会让 480s 显示成 479s。
+        const sessionState = app.state.session as unknown as {
+          score?: number;
+          kills?: number;
+          level?: number;
+          elapsed?: number;
+        } | null;
+        // 仅当 session 与 HUD 都不可用时才用公式兜底，不参与正常结算，绝不二次叠加。
         const fallbackScore = (shown?.kills ?? 0) * 10 + (shown?.level ?? 1) * 100;
         const payload: ResultPayload = {
           victory: event.type === GameEventType.Victory,
           mode: 'campaign_8min',
           generalId: save.meta.selectedGeneral,
-          score: Math.max(0, Math.round(shown !== null ? shown.score : fallbackScore)),
-          kills: shown?.kills ?? 0,
-          level: shown?.level ?? 1,
+          score: Math.max(0, Math.round(sessionState?.score ?? shown?.score ?? fallbackScore)),
+          kills: sessionState?.kills ?? shown?.kills ?? 0,
+          level: sessionState?.level ?? shown?.level ?? 1,
           elapsed: sessionState?.elapsed ?? shown?.elapsed ?? 0,
           damage: 0,
         };

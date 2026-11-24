@@ -1,9 +1,9 @@
 /**
  * 《无双》整局可玩性 · 结算面板契约 / 重开闭环专项 E2E（M09 / M15 / M16 / M17）。
  *
- * 覆盖：结算文案含积分/击杀/等级/时长；panel.score == HUD.score == session.score；
- *       panel.score ≠ session.score*2（无二次计分）；终局升级弹窗不得遮挡结算按钮；
- *       真实点击「再来一局」→ 选将 → 出征 → 新局从 0 重新开始；结算时长取 session 口径。
+ * 覆盖：真实快进到自然终局（Victory 或 Defeat 均由产品链路自行结算）；结算文案四要素；
+ *       panel.score == HUD.score == session.score 且无二次计分；终局升级弹窗不遮挡结算按钮；
+ *       不带 force 的真实点击「再来一局」→选将→出征→新局从 0 开始并能继续击杀；时长取 session 口径。
  * 设计依据：docs/ARCHITECTURE_FULLRUN.md §0.2 / §6 M09/M15/M16/M17 / §13。
  *
  * 本地复现：
@@ -12,12 +12,12 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { hookApp, waitForApp, freezeApp } from './helpers/appHook';
-import { fastForwardThrough, fastForwardTo } from './helpers/fastForward';
-import { readHud, readResultPanel } from './helpers/hudProbe';
+import { fastForwardTo, type FastForwardSample } from './helpers/fastForward';
+import { readHud, readResultPanel, type HudSnapshot } from './helpers/hudProbe';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173/';
-/** M09/M16 需要确保已发生升级：60s 时等级受全局 tick 起点影响可能为 1，180s 稳定 >1。 */
-const MILESTONES: readonly number[] = [180];
+/** §7.2 冻结里程碑，真实快进到自然终局，不手工投递任何终局事件。 */
+const MILESTONES: readonly number[] = [60, 180, 300, 420, 470, 481];
 const BUTTON_LABELS: readonly string[] = ['再来一局', '查看排行', '返回主菜单'];
 
 interface ResultSessionView {
@@ -85,66 +85,32 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
   await waitForApp(page);
   await freezeApp(page);
 
-  const samples = await fastForwardThrough(page, MILESTONES);
-  const hudBeforeResult = await readHud(page);
-  const diagBefore = JSON.stringify({ samples, hudBeforeResult, errors });
+  // 真实快进到自然终局；全程不点选升级卡，也不手工投递终局事件。
+  const samples: FastForwardSample[] = [];
+  const hudSamples: HudSnapshot[] = [];
+  for (const milestone of MILESTONES) {
+    samples.push(await fastForwardTo(page, milestone));
+    hudSamples.push(await readHud(page));
+  }
+  const terminal = samples[samples.length - 1];
+  const diagRun = JSON.stringify({ samples, hudSamples, errors });
 
-  // M16 前置条件：快进期间确实发生过升级（全程不点选卡片）。
-  expect(hudBeforeResult.level, `快进后应发生过升级：${diagBefore}`).toBeGreaterThan(1);
+  // M16 前置：快进期间确实发生过升级（等级只读自 DOM，证明升级事件链路有效）。
+  const maxLevel = Math.max(...hudSamples.map((h) => h.level));
+  expect(maxLevel, `快进期间应发生过升级：${diagRun}`).toBeGreaterThan(1);
+  expect([1, 2], `应由产品链路自然结算：${diagRun}`).toContain(terminal.result);
 
-  // LevelUp 事件走 100ms 墙钟节流 drain，可能仍滞留在总线里尚未弹出卡片。
-  // 先跨过节流补一帧确保弹窗真的出现，这样后面的「结算页必须隐藏弹窗」才是有意义的断言。
-  await page.waitForTimeout(150);
-  await page.evaluate(() => {
-    const w = window as unknown as {
-      __fullRunApp?: { frameStep(t: number): void; lastTime: number };
-      __fullRunTime?: number;
-    };
-    const app = w.__fullRunApp;
-    if (app !== undefined) app.frameStep(w.__fullRunTime ?? app.lastTime);
+  await expect(page.locator('.scene--result'), `自然终局应切结算场景：${diagRun}`).toBeVisible({
+    timeout: 10_000,
   });
-  await expect(
-    page.locator('.overlay.ws-levelup'),
-    `升级弹窗应在终局前可见且未被点选：${diagBefore}`,
-  ).toBeVisible();
-
-  // 产品的 render system 30 顺序是「先 drain 事件 → 后 updateFromWorld(session)」，
-  // 自然终局事件会在 HUD 尚未同步到当帧 session 时被消费，导致 score 比 session 滞后一帧。
-  // 这里不放宽 M09 的精确等式：先补一帧让 HUD 与 session 完全同步，再通过公共事件总线
-  // 投递终局事件（与已验证的 QA-5 同手法），在同一同步帧上做三方精确比对。
-  await page.evaluate(() => {
-    const w = window as unknown as {
-      __fullRunApp?: { frameStep(t: number): void; lastTime: number };
-      __fullRunTime?: number;
-    };
-    const app = w.__fullRunApp;
-    if (app !== undefined) app.frameStep(w.__fullRunTime ?? app.lastTime);
-  });
-  await page.waitForTimeout(150); // 跨过 HUDSystem 的 100ms drain 节流
-  await page.evaluate(() => {
-    const w = window as unknown as {
-      __fullRunApp?: {
-        frameStep(t: number): void;
-        lastTime: number;
-        state: { buses: { events: { emit(type: number, a?: number, b?: number, c?: number): void } } };
-      };
-      __fullRunTime?: number;
-    };
-    const app = w.__fullRunApp;
-    if (app === undefined) throw new Error('__fullRunApp 未就绪');
-    app.state.buses.events.emit(11, 0, 0, 0); // GameEventType.Victory
-    app.frameStep(w.__fullRunTime ?? app.lastTime);
-  });
-
-  await expect(page.locator('.scene--result')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('.result-panel')).toBeVisible();
 
   const panel = await readResultPanel(page);
   const hud = await readHud(page);
   const session = await readResultSession(page);
-  const diag = JSON.stringify({ samples, hudBeforeResult, panel, hud, session, errors });
+  const diag = JSON.stringify({ samples, hudSamples, panel, hud, session, errors });
 
-  // M16（P0）：ResultScene.onEnter 必须真正隐藏常驻的升级弹窗，不得靠 CSS 盖住。
+  // M16（P0）：ResultScene.onEnter 必须真正隐藏常驻升级弹窗，不得靠 CSS 盖住。
   await expect(
     page.locator('.overlay.ws-levelup'),
     `进入结算页后升级弹窗应隐藏（不得遮挡按钮）：${diag}`,
@@ -160,7 +126,7 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
   expect(panel.level, `应解析出结算等级：${diag}`).toBeGreaterThan(0);
   expect(panel.elapsed, `应解析出结算时长：${diag}`).toBeGreaterThan(0);
 
-  // M09：三方同值 + 无二次计分。
+  // M09：三方同值 + 无二次计分（payload 以 session 为权威，HUD 仅 fallback）。
   expect(panel.score, `结算分应等于 session.score：${diag}`).toBe(session.score);
   expect(hud.score, `HUD.score 应等于 session.score：${diag}`).toBe(session.score);
   expect(panel.score, `结算分应等于 HUD.score：${diag}`).toBe(hud.score);
@@ -168,7 +134,7 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
   expect(panel.kills, `结算击杀应与 session.kills 同值：${diag}`).toBe(session.kills);
   expect(panel.level, `结算等级应与 session.level 同值：${diag}`).toBe(session.level);
 
-  // M17（P2）：结算时长取 session.elapsed 而非已 floor 的 HUD.lastTime，允许 1s 内误差。
+  // M17（P2）：结算时长取 session.elapsed（允许 ±1s），面板按 Math.floor 展示。
   expect(
     Math.abs(panel.elapsed - session.elapsed),
     `结算时长应与 session.elapsed 一致（≤1s）：${diag}`,
@@ -176,9 +142,8 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
   expect(panel.elapsed, `结算时长应等于 session.elapsed 向下取整：${diag}`).toBe(
     Math.floor(session.elapsed),
   );
-  // 终局 result ∈ {1,2} 由 fullrun.spec.ts（自然终局）断言；本 spec 聚焦结算面板契约。
 
-  // M15：三按钮存在、文案正确；不加 force、不做 DOM 注入，真实点击「再来一局」验证弹窗不再拦截。
+  // M15/M16：不加 force、不注入 DOM，真实点击「再来一局」验证弹窗不再拦截。
   const buttons = page.locator('.result-panel button');
   expect(await buttons.count(), `结算面板应有三个按钮：${diag}`).toBe(3);
   for (let i = 0; i < BUTTON_LABELS.length; i++) {
@@ -191,7 +156,6 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
     `「再来一局」应回到选将页：${diag}`,
   ).toBeVisible({ timeout: 10_000 });
 
-  // M16：重开闭环——选将出征后新局计数归零，随后能继续击杀。
   await page.locator('.general-grid .general-card').first().click();
   await page.locator('.select-panel button.primary').click();
   await expect(page.locator('.hud[data-hud="battle"]')).toBeVisible({ timeout: 10_000 });
