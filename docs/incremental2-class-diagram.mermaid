@@ -1,0 +1,99 @@
+classDiagram
+    class GeneralDef {
+        +id: string
+        +name: string
+        +faction: FactionId
+        +skills: string[]
+    }
+    class SkillDef {
+        +id: string
+        +cooldown: number
+        +range: number
+        +effectId?: string
+        +tags: string[]
+    }
+    class EffectDef {
+        +id: string
+        +trigger: TriggerType
+        +actions: ActionDef[]
+        +params: number[]
+    }
+    class SkillSlotBinding {
+        +slot: 0|1|2
+        +commandA: number
+        +buttonBit: number
+        +skillId: string
+        +effectId: string
+    }
+    class SkillSlotResolver {
+        +resolveSkillSlots(config: GameConfig, generalId: string): SkillSlotBinding[]
+        +validateGeneralSkills(config: GameConfig): string[]
+    }
+    class EffectCompileSystem {
+        +compileAll(state, owner, effectIds, slot?): void
+        +compile(state, owner, effectId, slot?): void
+        -encodeSlotMask(slot: number): number
+    }
+    class EffectTriggerSystem {
+        -terms: Component[]
+        +run(state, tick): void
+        -isCastAllowed(state, eid, mask): boolean
+    }
+    class InputCmd {
+        +buttons: Uint32Array
+        +aimX: Float32Array
+        +aimY: Float32Array
+    }
+    class effectMask {
+        +value: Uint32Array
+    }
+    class CreateStateOptions {
+        +seed?: number
+        +shadowCount?: number
+        +config?: GameConfig
+        +generalId?: string
+    }
+    class BenchmarkRegistration {
+        +register(app: App): void
+        -installStressScene(state: SimState): void
+        -topUp(state: SimState): void
+    }
+    class BenchProbe {
+        +getSnapshot(): BenchSnapshot
+    }
+    class BenchSnapshot {
+        +sceneReady: boolean
+        +enemies: number
+        +bullets: number
+        +tick: number
+        +quality: number
+        +headless: boolean
+        +slots: number
+    }
+    class FpsBenchmarkReport {
+        +schemaVersion: 1
+        +generatedAt: string
+        +environment: BenchEnvironment
+        +scenario: BenchScenario
+        +frameTimesMs: FrameStats
+        +fps: FpsStats
+        +runs: FpsBenchmarkReport[]
+        +notes: string[]
+    }
+
+    GeneralDef "1" --> "3" SkillSlotBinding : resolves to
+    SkillSlotResolver ..> GeneralDef : reads
+    SkillSlotResolver ..> SkillDef : reads
+    SkillSlotResolver ..> EffectDef : reads effectId
+    SkillSlotBinding --> SkillDef : skillId
+    SkillSlotBinding --> EffectDef : effectId
+    CreateStateOptions --> EffectCompileSystem : generalId drives compile
+    EffectCompileSystem ..> effectMask : writes slot bits (16..18)
+    EffectTriggerSystem ..> effectMask : reads
+    EffectTriggerSystem ..> InputCmd : per-owner buttons gate
+    BenchmarkRegistration ..> BenchProbe : installs
+    BenchProbe --> BenchSnapshot : returns
+    FpsBenchmarkReport o-- BenchEnvironment
+    FpsBenchmarkReport o-- BenchScenario
+    FpsBenchmarkReport o-- FrameStats
+    FpsBenchmarkReport o-- FpsStats

@@ -1,0 +1,37 @@
+sequenceDiagram
+    participant UI as TouchControls / DOM
+    participant PB as CommandBus
+    participant LS as LocalHumanSource
+    participant IS as InputSystem
+    participant MS as MovementSystem
+    participant ET as EffectTriggerSystem
+    participant AD as ActionDispatchSystem
+    participant EC as EffectCompileSystem
+    participant CFG as skillSlots / GeneralDef
+
+    Note over CFG,EC: 开局/换将（非热路径）
+    UI->>CFG: startBattle(mode, generalId)
+    CFG->>CFG: resolveSkillSlots(config, generalId)
+    CFG->>EC: compileAll(state, owner, ['eff_basic_attack'], undefined)
+    CFG->>EC: compileAll(state, owner, [eff0,eff1,eff2], slot=0/1/2)
+    EC->>EC: effectMask[main] = TriggerBit.onCast | (1<<16)<<slot
+
+    Note over UI,AD: 每 tick（固定 60Hz）
+    UI->>PB: CommandType.Skill(a=0/1/2), seq++
+    PB->>LS: drain(buffer)
+    LS->>LS: buttons |= 1 << a
+    LS->>IS: poll(tick, frame) → InputCmd.buttons[eid]
+    IS->>MS: InputCmd 写入完成
+    MS->>MS: flags[0] |= onCast; source[0]=eid (兼容保留)
+    MS->>ET: order 10
+    loop 每个 EffectTag 实体
+        ET->>ET: 读 owner=EffectContext.source[eid]
+        ET->>ET: slot = skillSlotOfMask(effectMask[eid])
+        ET->>IS: 读 InputCmd.buttons[owner]
+        ET->>ET: slot<0? 任意cast位 : (buttons & 1<<slot)
+        alt 命中
+            ET->>ET: ActiveEffect.state=1, elapsed=0
+        end
+    end
+    ET->>AD: order 11 按 op 分派
+    AD->>AD: ActiveEffect.cd = 0.1 (不改)

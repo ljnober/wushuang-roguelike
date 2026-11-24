@@ -10,14 +10,13 @@
  */
 // 本机 Playwright 由 npx 缓存在项目 node_modules 之外；用绝对 file:// 路径导入其测试入口。
 // 若项目已安装 playwright，可改回 `import { test, expect } from 'playwright/test';`
-import { test, expect } from 'file:///C:/Users/liujian/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright/test.mjs';
+import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4173/';
 const SAVE_KEY = 'wushuang.profile.v1';
 
-test.setTimeout(90_000);
-
 test('启动流程：Boot → Menu → Select → Battle → HUD tick → 刷新存档', async ({ page }) => {
+  test.setTimeout(90_000);
   const errors: string[] = [];
   const http404: string[] = [];
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
@@ -35,6 +34,11 @@ test('启动流程：Boot → Menu → Select → Battle → HUD tick → 刷新
   await expect(page.locator('.scene--boot')).toBeVisible();
   await expect(page.locator('.boot-title')).toHaveText('无双');
   await expect(page.locator('.boot-enter')).toBeVisible();
+  // E2 零副作用复核：不带 ?bench=1 时，benchmark.ts 不得安装任何探针。
+  const benchProbeAtBoot = await page.evaluate(
+    () => (window as unknown as Record<string, unknown>).__WS_BENCH__,
+  );
+  expect(benchProbeAtBoot, '正常访问不应存在 window.__WS_BENCH__').toBeUndefined();
 
   // --- Act/Assert 2：Menu 页 ---
   await page.locator('.boot-enter').click();
@@ -73,6 +77,11 @@ test('启动流程：Boot → Menu → Select → Battle → HUD tick → 刷新
   await expect(page.locator('.scene--select')).toHaveCount(0);
   await expect(page.locator('.hud[data-hud="battle"]')).toBeVisible();
   await expect(page.locator('.touch-controls')).toBeVisible();
+  // 进入战斗后再次确认：benchmark 压力场景从未被侧载安装。
+  const benchProbeInBattle = await page.evaluate(
+    () => (window as unknown as Record<string, unknown>).__WS_BENCH__,
+  );
+  expect(benchProbeInBattle, '战斗中也不应存在 window.__WS_BENCH__').toBeUndefined();
   const hpText = page.locator('.hud__line .hud__value').first();
   await expect(hpText).toHaveText(/^\d+ \/ \d+$/);
 
@@ -105,6 +114,7 @@ test('启动流程：Boot → Menu → Select → Battle → HUD tick → 刷新
 });
 
 test('移动端触控：控件生成、命中区 ≥44px、touch-action:none、setPointerCapture', async ({ page }) => {
+  test.setTimeout(90_000);
   const errors: string[] = [];
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
 

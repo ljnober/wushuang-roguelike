@@ -35,6 +35,14 @@ export const SNAP_LERP_THRESHOLD = 1.5;
 export const SNAP_TELEPORT_THRESHOLD = 20;
 export const INVALID_NET_ID = 0;
 export const INVALID_EID = 0;
+/** 武将主动技能槽数（不含通用普攻）。 */
+export const SKILL_SLOT_COUNT = 3;
+/** effectMask 高位槽位基址（bits16..18 表示 slot 0..2）。 */
+export const SKILL_SLOT_FLAG_BASE = 1 << 16;
+/** effectMask 槽位掩码（只追加高位，低 9 位 TriggerBit 不动）。 */
+export const SKILL_SLOT_MASK = 0x7 << 16;
+/** bit0 Basic | bit1 Skill1 | bit2 Skill2 | bit3 Skill3；core 层不得 import ecs，故用字面量。 */
+export const CAST_BUTTON_MASK = 0b1111;
 
 /** 经验曲线：round(10 + 8L + 0.8L²)。 */
 export const EXP_CURVE = (L: number): number => Math.round(10 + 8 * L + 0.8 * L * L);

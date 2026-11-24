@@ -9,12 +9,10 @@
  *
  * 运行：E2E_BASE_URL=http://localhost:5173/ npx playwright test tests/e2e/qaRegression.spec.ts
  */
-import { test, expect, type Page } from 'file:///C:/Users/liujian/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright/test.mjs';
+import { test, expect, type Page } from '@playwright/test';
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:5173/';
 const SAVE_KEY = 'wushuang.profile.v1';
-
-test.setTimeout(120_000);
 
 interface HudSample {
   hp: string;

@@ -12,6 +12,13 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   base: './',
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: false,
+    hmr: { clientPort: 5173 },
+  },
+  preview: { host: '0.0.0.0', port: 4173 },
   define: {
     __DEBUG__:
       "typeof location !== 'undefined' && new URLSearchParams(location.search).get('debug') === '1'",

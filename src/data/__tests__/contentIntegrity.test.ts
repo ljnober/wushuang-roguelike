@@ -17,6 +17,8 @@ import {
   SLOT_DEFS,
 } from '../equipment';
 import { GENERAL_DEFS } from '../generals';
+import { resolveSkillSlots, validateGeneralSkills } from '../skillSlots';
+import { SKILL_SLOT_COUNT } from '../../core/Constants';
 import { AFFIX_POOL, SOURCE_PRIORITY } from '../stats';
 import type { GameConfig } from '../types';
 
@@ -45,6 +47,27 @@ describe('内容完整性：注册表与武将', () => {
       }
     }
     expect(cfg.generals.validate()).toEqual([]);
+  });
+
+  it('40 将各有 3 个互异技能，effectId 可解析且 basic_attack 不在武将表', () => {
+    const cfg = config();
+    expect(validateGeneralSkills(cfg)).toEqual([]);
+    for (const general of cfg.generals.all()) {
+      expect(general.skills, `${general.id} 应恰好 3 个技能`).toHaveLength(SKILL_SLOT_COUNT);
+      expect(new Set(general.skills).size, `${general.id} 技能应互异`).toBe(SKILL_SLOT_COUNT);
+      expect(general.skills, `${general.id} 不得包含通用普攻`).not.toContain('basic_attack');
+      const bindings = resolveSkillSlots(cfg, general.id);
+      expect(bindings).toHaveLength(SKILL_SLOT_COUNT);
+      for (let slot = 0; slot < SKILL_SLOT_COUNT; slot++) {
+        const binding = bindings[slot];
+        expect(binding.slot).toBe(slot);
+        expect(binding.commandA).toBe(slot);
+        expect(binding.buttonBit).toBe(1 << slot);
+        expect(binding.skillId).toBe(general.skills[slot]);
+        expect(cfg.skills.has(binding.skillId)).toBe(true);
+        expect(cfg.effects.has(binding.effectId), `${binding.effectId} 应可解析`).toBe(true);
+      }
+    }
   });
 
   it('所有 Registry 通过 validate() 且 id 无重复', () => {

@@ -3,7 +3,8 @@
  *
  * 每位武将的 art 参数（阵营配色 / 发型头饰 / 胡须 / 武器 / 纹样）互不相同，
  * 足以供 art 层 PortraitFactory、ChibiFactory 程序化生成有辨识度的矢量形象。
- * 事实来源：DESIGN.md §1 / §8 / §9。
+ * 事实来源：DESIGN.md §1 / §8 / §9；第三技能取自
+ * docs/ARCHITECTURE_INCREMENTAL_2.md §6.1 冻结补全表。
  */
 import type { GeneralDef } from './types';
 
@@ -19,7 +20,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 1, scale: 1.0, rotation: 0 },
     },
     baseStats: { hp: 110, atk: 20, speed: 200, armor: 8, crit: 0.05 },
-    skills: ['sweeping_slash', 'war_cry'],
+    skills: ['sweeping_slash', 'war_cry', 'tiger_charge'],
   },
   {
     id: 'guanyu', name: '关羽', faction: 'shu', title: '武圣',
@@ -31,7 +32,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 2, scale: 1.2, rotation: 15 },
     },
     baseStats: { hp: 140, atk: 30, speed: 210, armor: 14, crit: 0.08 },
-    skills: ['dragon_roar', 'sweeping_slash'],
+    skills: ['dragon_roar', 'sweeping_slash', 'tiger_charge'],
   },
   {
     id: 'zhangfei', name: '张飞', faction: 'shu', title: '万人敌',
@@ -43,7 +44,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 3, scale: 1.4, rotation: 0 },
     },
     baseStats: { hp: 160, atk: 32, speed: 190, armor: 12, crit: 0.06 },
-    skills: ['thunder_strike', 'war_cry'],
+    skills: ['thunder_strike', 'war_cry', 'tiger_charge'],
   },
   {
     id: 'zhaoyun', name: '赵云', faction: 'shu', title: '常胜将军',
@@ -55,7 +56,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 4, scale: 0.9, rotation: 30 },
     },
     baseStats: { hp: 125, atk: 28, speed: 230, armor: 10, crit: 0.10 },
-    skills: ['spear_thrust', 'dragon_roar'],
+    skills: ['spear_thrust', 'dragon_roar', 'tiger_charge'],
   },
   {
     id: 'machao', name: '马超', faction: 'shu', title: '锦马超',
@@ -67,7 +68,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 5, scale: 1.1, rotation: 45 },
     },
     baseStats: { hp: 130, atk: 29, speed: 225, armor: 9, crit: 0.09 },
-    skills: ['spear_thrust', 'tiger_charge'],
+    skills: ['spear_thrust', 'tiger_charge', 'war_cry'],
   },
   {
     id: 'huangzhong', name: '黄忠', faction: 'shu', title: '老当益壮',
@@ -79,7 +80,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 6, scale: 1.0, rotation: 0 },
     },
     baseStats: { hp: 115, atk: 30, speed: 195, armor: 8, crit: 0.14 },
-    skills: ['arrow_rain', 'moon_slash'],
+    skills: ['arrow_rain', 'moon_slash', 'tiger_charge'],
   },
   {
     id: 'zhugeliang', name: '诸葛亮', faction: 'shu', title: '卧龙',
@@ -91,7 +92,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 7, scale: 0.8, rotation: 60 },
     },
     baseStats: { hp: 95, atk: 26, speed: 200, armor: 6, crit: 0.12 },
-    skills: ['fire_wave', 'fan_gust'],
+    skills: ['fire_wave', 'fan_gust', 'tiger_charge'],
   },
   {
     id: 'jiangwei', name: '姜维', faction: 'shu', title: '麒麟儿',
@@ -103,7 +104,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 8, scale: 1.0, rotation: 20 },
     },
     baseStats: { hp: 120, atk: 27, speed: 215, armor: 10, crit: 0.10 },
-    skills: ['blade_dance', 'whirlwind'],
+    skills: ['blade_dance', 'whirlwind', 'tiger_charge'],
   },
   {
     id: 'weiyan', name: '魏延', faction: 'shu', title: '奇谋',
@@ -115,7 +116,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 9, scale: 1.3, rotation: 35 },
     },
     baseStats: { hp: 135, atk: 28, speed: 205, armor: 11, crit: 0.07 },
-    skills: ['whirlwind', 'war_cry'],
+    skills: ['whirlwind', 'war_cry', 'tiger_charge'],
   },
   {
     id: 'pangtong', name: '庞统', faction: 'shu', title: '凤雏',
@@ -127,7 +128,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 10, scale: 0.9, rotation: 15 },
     },
     baseStats: { hp: 90, atk: 25, speed: 198, armor: 5, crit: 0.12 },
-    skills: ['chain_lightning', 'fire_wave'],
+    skills: ['chain_lightning', 'fire_wave', 'tiger_charge'],
   },
 
   // ===== 魏（10）===========================================================
@@ -141,7 +142,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 11, scale: 1.1, rotation: 0 },
     },
     baseStats: { hp: 120, atk: 28, speed: 205, armor: 11, crit: 0.09 },
-    skills: ['war_cry', 'shadow_step'],
+    skills: ['war_cry', 'shadow_step', 'whirlwind'],
   },
   {
     id: 'xiahoudun', name: '夏侯惇', faction: 'wei', title: '独眼将军',
@@ -153,7 +154,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 12, scale: 1.2, rotation: 10 },
     },
     baseStats: { hp: 150, atk: 30, speed: 200, armor: 15, crit: 0.06 },
-    skills: ['sweeping_slash', 'war_cry'],
+    skills: ['sweeping_slash', 'war_cry', 'whirlwind'],
   },
   {
     id: 'zhangliao', name: '张辽', faction: 'wei', title: '威震逍遥津',
@@ -165,7 +166,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 13, scale: 1.0, rotation: 25 },
     },
     baseStats: { hp: 130, atk: 31, speed: 220, armor: 10, crit: 0.10 },
-    skills: ['tiger_charge', 'whirlwind'],
+    skills: ['tiger_charge', 'whirlwind', 'sweeping_slash'],
   },
   {
     id: 'xuchu', name: '许褚', faction: 'wei', title: '虎痴',
@@ -177,7 +178,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 14, scale: 1.5, rotation: 0 },
     },
     baseStats: { hp: 170, atk: 33, speed: 185, armor: 16, crit: 0.05 },
-    skills: ['earthquake', 'war_cry'],
+    skills: ['earthquake', 'war_cry', 'whirlwind'],
   },
   {
     id: 'dianwei', name: '典韦', faction: 'wei', title: '古之恶来',
@@ -189,7 +190,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 15, scale: 1.4, rotation: 45 },
     },
     baseStats: { hp: 165, atk: 34, speed: 190, armor: 14, crit: 0.06 },
-    skills: ['earthquake', 'sweeping_slash'],
+    skills: ['earthquake', 'sweeping_slash', 'whirlwind'],
   },
   {
     id: 'guojia', name: '郭嘉', faction: 'wei', title: '鬼才',
@@ -201,7 +202,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 1, scale: 0.8, rotation: 60 },
     },
     baseStats: { hp: 88, atk: 27, speed: 200, armor: 5, crit: 0.14 },
-    skills: ['ice_nova', 'chain_lightning'],
+    skills: ['ice_nova', 'chain_lightning', 'whirlwind'],
   },
   {
     id: 'simayi', name: '司马懿', faction: 'wei', title: '鹰视狼顾',
@@ -213,7 +214,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 2, scale: 0.9, rotation: 30 },
     },
     baseStats: { hp: 100, atk: 29, speed: 198, armor: 7, crit: 0.13 },
-    skills: ['shadow_step', 'soul_drain'],
+    skills: ['shadow_step', 'soul_drain', 'whirlwind'],
   },
   {
     id: 'caren', name: '曹仁', faction: 'wei', title: '大将军',
@@ -225,7 +226,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 3, scale: 1.1, rotation: 0 },
     },
     baseStats: { hp: 155, atk: 25, speed: 190, armor: 18, crit: 0.04 },
-    skills: ['golden_shield', 'war_cry'],
+    skills: ['golden_shield', 'war_cry', 'whirlwind'],
   },
   {
     id: 'xuhuang', name: '徐晃', faction: 'wei', title: '虎臣',
@@ -237,7 +238,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 4, scale: 1.2, rotation: 20 },
     },
     baseStats: { hp: 135, atk: 29, speed: 205, armor: 12, crit: 0.07 },
-    skills: ['sweeping_slash', 'tiger_charge'],
+    skills: ['sweeping_slash', 'tiger_charge', 'whirlwind'],
   },
   {
     id: 'zhanghe', name: '张郃', faction: 'wei', title: '巧变',
@@ -249,7 +250,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 5, scale: 1.0, rotation: 40 },
     },
     baseStats: { hp: 125, atk: 28, speed: 215, armor: 10, crit: 0.09 },
-    skills: ['spear_thrust', 'whirlwind'],
+    skills: ['spear_thrust', 'whirlwind', 'sweeping_slash'],
   },
 
   // ===== 吴（10）===========================================================
@@ -263,7 +264,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 6, scale: 1.0, rotation: 0 },
     },
     baseStats: { hp: 118, atk: 26, speed: 205, armor: 10, crit: 0.09 },
-    skills: ['war_cry', 'dragon_roar'],
+    skills: ['war_cry', 'dragon_roar', 'blade_dance'],
   },
   {
     id: 'zhouyu', name: '周瑜', faction: 'wu', title: '美周郎',
@@ -275,7 +276,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 7, scale: 0.9, rotation: 15 },
     },
     baseStats: { hp: 112, atk: 30, speed: 215, armor: 8, crit: 0.12 },
-    skills: ['fire_wave', 'phoenix'],
+    skills: ['fire_wave', 'phoenix', 'blade_dance'],
   },
   {
     id: 'lvmeng', name: '吕蒙', faction: 'wu', title: '士别三日',
@@ -287,7 +288,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 8, scale: 1.1, rotation: 25 },
     },
     baseStats: { hp: 125, atk: 29, speed: 210, armor: 11, crit: 0.10 },
-    skills: ['blade_dance', 'shadow_step'],
+    skills: ['blade_dance', 'shadow_step', 'arrow_rain'],
   },
   {
     id: 'luxun', name: '陆逊', faction: 'wu', title: '书生拜将',
@@ -299,7 +300,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 9, scale: 0.8, rotation: 45 },
     },
     baseStats: { hp: 98, atk: 28, speed: 210, armor: 7, crit: 0.13 },
-    skills: ['fire_wave', 'web_trap'],
+    skills: ['fire_wave', 'web_trap', 'blade_dance'],
   },
   {
     id: 'ganning', name: '甘宁', faction: 'wu', title: '锦帆贼',
@@ -311,7 +312,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 10, scale: 1.2, rotation: 35 },
     },
     baseStats: { hp: 122, atk: 31, speed: 230, armor: 9, crit: 0.12 },
-    skills: ['blade_dance', 'whirlwind'],
+    skills: ['blade_dance', 'whirlwind', 'arrow_rain'],
   },
   {
     id: 'taishici', name: '太史慈', faction: 'wu', title: '神射',
@@ -323,7 +324,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 11, scale: 1.0, rotation: 0 },
     },
     baseStats: { hp: 120, atk: 30, speed: 220, armor: 9, crit: 0.13 },
-    skills: ['arrow_rain', 'moon_slash'],
+    skills: ['arrow_rain', 'moon_slash', 'blade_dance'],
   },
   {
     id: 'huanggai', name: '黄盖', faction: 'wu', title: '苦肉计',
@@ -335,7 +336,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 12, scale: 1.3, rotation: 20 },
     },
     baseStats: { hp: 140, atk: 27, speed: 195, armor: 13, crit: 0.06 },
-    skills: ['fire_wave', 'war_cry'],
+    skills: ['fire_wave', 'war_cry', 'blade_dance'],
   },
   {
     id: 'sunshangxiang', name: '孙尚香', faction: 'wu', title: '弓腰姬',
@@ -347,7 +348,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 13, scale: 0.7, rotation: 30 },
     },
     baseStats: { hp: 100, atk: 29, speed: 225, armor: 6, crit: 0.16 },
-    skills: ['arrow_rain', 'shadow_step'],
+    skills: ['arrow_rain', 'shadow_step', 'blade_dance'],
   },
   {
     id: 'lusu', name: '鲁肃', faction: 'wu', title: '忠厚长者',
@@ -359,7 +360,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 14, scale: 0.9, rotation: 0 },
     },
     baseStats: { hp: 105, atk: 24, speed: 200, armor: 8, crit: 0.08 },
-    skills: ['heal_light', 'fan_gust'],
+    skills: ['heal_light', 'fan_gust', 'blade_dance'],
   },
   {
     id: 'chengpu', name: '程普', faction: 'wu', title: '江表虎臣',
@@ -371,7 +372,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 15, scale: 1.1, rotation: 15 },
     },
     baseStats: { hp: 138, atk: 27, speed: 195, armor: 14, crit: 0.05 },
-    skills: ['spear_thrust', 'war_cry'],
+    skills: ['spear_thrust', 'war_cry', 'blade_dance'],
   },
 
   // ===== 群雄（10）=========================================================
@@ -385,7 +386,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 1, scale: 1.3, rotation: 45 },
     },
     baseStats: { hp: 150, atk: 38, speed: 235, armor: 12, crit: 0.12 },
-    skills: ['sweeping_slash', 'tiger_charge'],
+    skills: ['sweeping_slash', 'tiger_charge', 'earthquake'],
   },
   {
     id: 'diaochan', name: '貂蝉', faction: 'qun', title: '闭月',
@@ -397,7 +398,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 2, scale: 0.6, rotation: 60 },
     },
     baseStats: { hp: 92, atk: 26, speed: 225, armor: 5, crit: 0.15 },
-    skills: ['soul_drain', 'blade_dance'],
+    skills: ['soul_drain', 'blade_dance', 'earthquake'],
   },
   {
     id: 'zhangjiao', name: '张角', faction: 'qun', title: '太平道人',
@@ -409,7 +410,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 3, scale: 0.9, rotation: 0 },
     },
     baseStats: { hp: 95, atk: 30, speed: 200, armor: 6, crit: 0.11 },
-    skills: ['chain_lightning', 'poison_cloud'],
+    skills: ['chain_lightning', 'poison_cloud', 'earthquake'],
   },
   {
     id: 'dongzhuo', name: '董卓', faction: 'qun', title: '暴君',
@@ -421,19 +422,19 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 4, scale: 1.5, rotation: 10 },
     },
     baseStats: { hp: 175, atk: 32, speed: 180, armor: 17, crit: 0.04 },
-    skills: ['earthquake', 'war_cry'],
+    skills: ['earthquake', 'war_cry', 'sweeping_slash'],
   },
   {
     id: 'yuanshao', name: '袁绍', faction: 'qun', title: '四世三公',
     art: {
-      colors: { primary: 0x8e44ad, secondary: 0x191970, accent: 0xc0c0c0, skin: 0xffe0bd },
+      colors: { primary: 0x8e44ad, secondary: 0x191970, accent: 0xc0c0c0, skin: 0xf0c8a0 },
       hair: { style: 2, ornament: 5, color: 0x2b2b2b },
       beard: { style: 3, color: 0x2b2b2b },
       weapon: { type: 'sword', style: 1 },
       pattern: { id: 5, scale: 1.1, rotation: 20 },
     },
     baseStats: { hp: 115, atk: 25, speed: 200, armor: 10, crit: 0.07 },
-    skills: ['war_cry', 'arrow_rain'],
+    skills: ['war_cry', 'arrow_rain', 'earthquake'],
   },
   {
     id: 'gongsunzan', name: '公孙瓒', faction: 'qun', title: '白马将军',
@@ -445,7 +446,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 6, scale: 1.0, rotation: 35 },
     },
     baseStats: { hp: 125, atk: 29, speed: 230, armor: 9, crit: 0.11 },
-    skills: ['tiger_charge', 'spear_thrust'],
+    skills: ['tiger_charge', 'spear_thrust', 'earthquake'],
   },
   {
     id: 'mateng', name: '马腾', faction: 'qun', title: '西凉雄主',
@@ -457,7 +458,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 7, scale: 1.3, rotation: 50 },
     },
     baseStats: { hp: 140, atk: 30, speed: 210, armor: 12, crit: 0.08 },
-    skills: ['sweeping_slash', 'tiger_charge'],
+    skills: ['sweeping_slash', 'tiger_charge', 'earthquake'],
   },
   {
     id: 'huaxiong', name: '华雄', faction: 'qun', title: '汜水关守将',
@@ -469,7 +470,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 8, scale: 1.4, rotation: 0 },
     },
     baseStats: { hp: 160, atk: 31, speed: 190, armor: 15, crit: 0.05 },
-    skills: ['war_cry', 'earthquake'],
+    skills: ['war_cry', 'earthquake', 'sweeping_slash'],
   },
   {
     id: 'yanliang', name: '颜良', faction: 'qun', title: '河北名将',
@@ -481,7 +482,7 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 9, scale: 1.2, rotation: 25 },
     },
     baseStats: { hp: 145, atk: 32, speed: 200, armor: 13, crit: 0.06 },
-    skills: ['sweeping_slash', 'dragon_roar'],
+    skills: ['sweeping_slash', 'dragon_roar', 'earthquake'],
   },
   {
     id: 'chenggong', name: '陈宫', faction: 'qun', title: '智谋之士',
@@ -493,6 +494,6 @@ export const GENERAL_DEFS: readonly GeneralDef[] = [
       pattern: { id: 10, scale: 0.8, rotation: 40 },
     },
     baseStats: { hp: 90, atk: 26, speed: 200, armor: 6, crit: 0.12 },
-    skills: ['fire_wave', 'chain_lightning'],
+    skills: ['fire_wave', 'chain_lightning', 'earthquake'],
   },
 ] as const;

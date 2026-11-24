@@ -10,6 +10,7 @@ import { EFFECT_ENTITY_BASE, EXP_CURVE, SNAPSHOT_POOL_SIZE, TICK_RATE } from '..
 import { loadConfig } from '../core/Config';
 import { Rng } from '../core/Rng';
 import type { GameConfig } from '../data/types';
+import { resolveSkillSlots } from '../data/skillSlots';
 import { ALL_COMPONENTS } from '../ecs/bit/components';
 import type { Eid } from '../ecs/bit/types';
 import { add, has, type BattleWorld } from '../ecs/bit/adapter';
@@ -90,6 +91,8 @@ export interface CreateStateOptions {
   shadowCount?: number;
   config?: GameConfig;
   registry?: EntityRegistryLike | null;
+  /** 所选武将 id；默认 'liubei' 保持既有测试基线。 */
+  generalId?: string;
 }
 
 let activeControlRegistry: ControlSourceRegistry | null = null;
@@ -190,20 +193,20 @@ export function createBattleState(options: CreateStateOptions = {}): SimState {
   }
   battleSession(state).nextNetId = players.length + 1;
 
-  // 效果只在开局编译一次：三名常用技能 + 全局击杀吸血。
-  const registryEffects = config.effects.all();
-  const effectIds: string[] = [];
-  for (let i = 0; i < registryEffects.length && effectIds.length < 4; i++) {
-    const id = registryEffects[i].id;
-    if (registryEffects[i].trigger === 'onHit' || registryEffects[i].trigger === 'onCast' || id === 'eff_on_kill_lifesteal') {
-      effectIds.push(id);
-    }
-  }
+  // 效果只在开局编译一次：通用普攻 + 所选武将的三个技能槽。
+  // 不再从 Registry 前 4 项硬编码取效果；全局 onKill/onCritical 效果本轮仍不编译。
+  const generalId = options.generalId ?? 'liubei';
+  const bindings = resolveSkillSlots(config, generalId);
   const effectRegistry = new EffectRegistry();
   const compiler = new EffectCompileSystem(effectRegistry);
   activeEffectCompiler = compiler;
   for (let i = 0; i < players.length; i++) {
-    compiler.compileAll(state, players[i], effectIds);
+    const owner = players[i];
+    compiler.compileAll(state, owner, ['eff_basic_attack']);
+    for (let slot = 0; slot < bindings.length; slot++) {
+      const binding = bindings[slot];
+      compiler.compile(state, owner, binding.effectId, binding.slot);
+    }
   }
   // 编译期创建 DirtyStat 后，属性系统会在首 tick 结算并写快照。
   return state;
@@ -322,7 +325,7 @@ export function register(app: App): void {
 
   const controls: BattleSessionControls = {
     startBattle: (mode: string, generalId: string): void => {
-      const fresh = createBattleState();
+      const fresh = createBattleState({ generalId });
       const freshSession = battleSession(fresh);
       freshSession.startTick = getSimTick();
       freshSession.running = 1;

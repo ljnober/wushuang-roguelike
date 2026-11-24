@@ -6,7 +6,15 @@
  * 运行层 EffectTriggerSystem 只做掩码短路；ActionDispatchSystem 按 op 数字下标 O(1) 分派。
  * 运行期零 addEntity、零闭包创建、零字符串查找。
  */
-import { CAP, TICK_DT } from '../../core/Constants';
+import {
+  CAST_BUTTON_MASK,
+  CAP,
+  SKILL_SLOT_COUNT,
+  SKILL_SLOT_FLAG_BASE,
+  SKILL_SLOT_MASK,
+  TICK_DT,
+  assert,
+} from '../../core/Constants';
 import type { ActionOp, EffectDef, TriggerType } from '../../data/types';
 import type { Eid } from '../bit/types';
 import { add, has, query, queryNoCommit } from '../bit/adapter';
@@ -24,6 +32,7 @@ import {
   effectMask,
   Faction,
   Health,
+  InputCmd,
   Modifier,
   ModifierOwner,
   Position,
@@ -104,13 +113,39 @@ function compareCodeOf(name: string): number {
 
 /** buffStat 动作预分配的 Modifier 载体：actionEid → modifierEid，零运行时分配。 */
 const buffCarrier = new Int32Array(CAP);
-/** 已编译的 (owner, effectId) 集合，仅编译期使用，避免重复触发同一效果。 */
+/** 已编译的 (owner, slot, effectId) 集合，仅编译期使用；同效果不同槽位视为不同实体。 */
 const compiledEffects = new Set<string>();
 
 /** 清空编译期映射（新建世界 / 测试隔离时调用）。 */
 export function resetEffectRuntime(): void {
   buffCarrier.fill(0);
   compiledEffects.clear();
+}
+
+/**
+ * 只读解析效果掩码中的槽位绑定（调试 / 测试用）。
+ * 编码统一为 SKILL_SLOT_FLAG_BASE << slot（one-hot，bits16..18）；
+ * 同时兼容架构表按「值 = slot+1」书写的 3<<16，便于人工构造掩码复核。
+ * @returns -1 表示通用效果（无槽位），0..2 表示武将技能槽。
+ */
+export function skillSlotOfMask(mask: number): -1 | 0 | 1 | 2 {
+  const encoded = (mask & SKILL_SLOT_MASK) >>> 16;
+  if (encoded === 0) return -1;
+  if (encoded === 1) return 0;
+  if (encoded === 2) return 1;
+  if (encoded === 3 || encoded === 4) return 2;
+  return -1;
+}
+
+/** 槽位参数非法必须断言（1xxx 配置错误），不静默降级成通用效果。 */
+function slotFlagOf(slot: number | undefined): number {
+  if (slot === undefined) return 0;
+  assert(
+    Number.isInteger(slot) && slot >= 0 && slot < SKILL_SLOT_COUNT,
+    1011,
+    `非法技能槽位: ${slot}`,
+  );
+  return SKILL_SLOT_FLAG_BASE << slot;
 }
 
 export type ActionHandler = (state: SimState, actionEid: Eid, owner: Eid, params: Float32Array) => void;
@@ -315,21 +350,23 @@ export class EffectRegistry {
 export class EffectCompileSystem {
   constructor(private readonly registry: EffectRegistry) {}
 
-  /** 给宿主编译一组效果 id。字符串只在编译期出现。 */
-  compileAll(state: SimState, owner: Eid, effectIds: readonly string[]): void {
+  /** 给宿主编译一组效果 id；slot 省略时为通用效果，指定时强制按 onCast 语义编译。 */
+  compileAll(state: SimState, owner: Eid, effectIds: readonly string[], slot?: number): void {
     for (let i = 0; i < effectIds.length; i++) {
-      this.compile(state, owner, effectIds[i]);
+      this.compile(state, owner, effectIds[i], slot);
     }
   }
 
-  /** 编译单个效果；重复编译同一 (owner, effectId) 会被掩码短路。 */
-  compile(state: SimState, owner: Eid, effectId: string): void {
+  /** 编译单个效果；重复编译同一 (owner, slot, effectId) 会被编译表短路。 */
+  compile(state: SimState, owner: Eid, effectId: string, slot?: number): void {
     const def = state.config.effects.tryGet(effectId);
     if (def === undefined) {
       return;
     }
+    const slotFlag = slotFlagOf(slot);
+    const slotKey = slot === undefined ? -1 : slot;
     const world = state.world;
-    const key = owner + ':' + effectId;
+    const key = owner + ':' + slotKey + ':' + effectId;
     if (compiledEffects.has(key)) {
       return;
     }
@@ -343,7 +380,8 @@ export class EffectCompileSystem {
       }
     }
 
-    const bit = triggerBitOf(def.trigger);
+    // 槽位效果强制 onCast：忽略 EffectDef.trigger，解决原 onHit 技能按键不生效的问题。
+    const bit = slotFlag === 0 ? triggerBitOf(def.trigger) : TriggerBit.onCast;
     if (!has(world, owner, effectMask)) {
       add(world, owner, effectMask);
       effectMask.value[owner] = 0;
@@ -360,7 +398,7 @@ export class EffectCompileSystem {
     const main = state.pool.effects.compile(cfgId, owner);
     ActiveEffect.defId[main] = cfgId;
     ActiveEffect.state[main] = 0;
-    effectMask.value[main] = bit;
+    effectMask.value[main] = (bit | slotFlag) >>> 0;
     EffectContext.source[main] = owner >>> 0;
     EffectContext.target[main] = 0;
     if (def.trigger === 'onTimer') {
@@ -445,7 +483,22 @@ export class EffectTriggerSystem {
         ActiveEffect.cd[eid] = Math.max(0, ActiveEffect.cd[eid] - TICK_DT);
         continue;
       }
-      if (flags === 0 || (effectMask.value[eid] & flags) === 0) {
+      const mask = effectMask.value[eid];
+      let allowed = false;
+      if ((mask & TriggerBit.onCast) !== 0) {
+        // onCast 逐宿主判定：只读自己的 InputCmd.buttons，修掉多玩家全局串扰。
+        const owner = EffectContext.source[eid] >>> 0;
+        if (owner !== 0 && owner < CAP) {
+          const buttons = InputCmd.buttons[owner] >>> 0;
+          const slot = skillSlotOfMask(mask);
+          const needed = slot < 0 ? CAST_BUTTON_MASK : (1 << slot);
+          allowed = (buttons & needed) !== 0;
+        }
+      } else {
+        // 非 onCast（onHit/onKill/onCritical/...）保持原全局 flags 语义，改动面最小。
+        allowed = flags !== 0 && (mask & flags) !== 0;
+      }
+      if (!allowed) {
         continue;
       }
       ActiveEffect.state[eid] = 1;
