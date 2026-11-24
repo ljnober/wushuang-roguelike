@@ -1,0 +1,28 @@
+sequenceDiagram
+  participant DOM as 原生 DOM UI
+  participant App as app/App
+  participant Scheduler as ecs/scheduler
+  participant Sim as DeterministicSim
+  participant Systems as B 系统链
+  participant Bridge as CommandBus/GameEventBus
+  participant Net as NetSystems/Transport
+  participant Render as PixiPools/Renderer
+
+  DOM->>Bridge: push(Command{Move/Skill, playerId, seq})
+  loop 每 RAF 帧
+    App->>App: acc += rawDt
+    loop while acc >= TICK_DT (不丢 tick)
+      App->>Sim: step(tick, inputFrame, state)
+      Sim->>Net: [客户端] reportInput / [Host] buildSnapshot
+      Sim->>Systems: 按 §6.3 顺序 run(state,tick) 1..19
+      Systems->>Bridge: emit(GameEventType.Damage/Kill/...)
+      Systems->>Systems: DeadRecycleSystem → recycle + commitRemovals
+      App->>App: simTick++, acc -= TICK_DT
+    end
+    App->>App: alpha = acc / TICK_DT
+    App->>Render: renderFrame(alpha)
+    Render->>Render: ViewportSystem(Culled) → RenderSyncSystem(px+(x-px)*alpha)
+    Render->>DOM: HUDSystem 10Hz drain(GameEventBus) → 直写
+  end
+  Net->>Sim: [客户端] 收到 StateSnapshot → PredictionBuffer.reconcile
+  Sim->>Sim: applySnapshot → 用缓存输入重放 T+1..当前（lerp/snap）

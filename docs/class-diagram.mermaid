@@ -1,0 +1,288 @@
+classDiagram
+  %% ===== 核心基础设施 =====
+  class Registry~T~ {
+    +namespace: string
+    +sealed: boolean
+    +register(item: T) Registry~T~
+    +get(id: string) T
+    +tryGet(id: string) T
+    +all() readonly T[]
+    +validate() string[]
+    +seal() Registry~T~
+  }
+  class Rng {
+    -state: number
+    +next() number
+    +int(maxExclusive: number) number
+    +fork(salt: number) Rng
+    +getState() number
+    +setState(s: number) void
+    +derive(seed: number, playerId: number, tick: number, salt: number)$ Rng
+  }
+  class GameConfig {
+    +generals: Registry~GeneralDef~
+    +enemies: Registry~EnemyDef~
+    +effects: Registry~EffectDef~
+    +equipment: Registry~EquipmentDef~
+    +stats: Registry~StatDef~
+    +waves: WaveStage[]
+    +buckets: readonly string[]
+    +sourcePriority: readonly string[]
+  }
+
+  %% ===== bitECS 适配与组件 =====
+  class BattleWorld {
+    +label: string
+    +index: EntityIndex
+    +components: SoAComponent[]
+  }
+  class BitAdapter {
+    +createBitWorld(label: string)$ BattleWorld
+    +spawn(world: BattleWorld)$ Eid
+    +recycle(world: BattleWorld, eid: Eid)$ void
+    +query(world: BattleWorld, terms: QueryTerm[])$ Readonly~Uint32Array~
+    +add(world: BattleWorld, eid: Eid, comp)$ void
+    +commit(world: BattleWorld)$ void
+  }
+  class SoAComponent {
+    <<interface>>
+    +fields: FieldArray
+  }
+  class EffectContext {
+    +source: number
+    +target: number
+    +hitValue: number
+    +flags: number
+  }
+
+  %% ===== 桥接与池 =====
+  class CommandBus {
+    -ring: Int32Array
+    +push(cmd: Command) boolean
+    +drain(out: Command[]) number
+  }
+  class GameEventBus {
+    -typeRing: Int32Array
+    -dataRing: Float32Array
+    +emit(type: GameEventType, a, b, c) void
+    +drain(out: GameEvent[]) number
+  }
+  class EntityPool {
+    +acquire() Eid
+    +release(eid: Eid) void
+    +available: number
+  }
+  class EffectEntityPool {
+    +compile(effectCfgId, owner) Eid
+  }
+  class ParamPool {
+    +data: Float32Array
+    +alloc(count) number
+    +write(offset, values) number
+    +reset() void
+  }
+  class SnapshotPool {
+    +final: Float32Array
+    +contribution: Float32Array
+    +versions: Uint32Array
+    +acquire() number
+    +write(index, stat, value) void
+    +bumpVersion(index) void
+  }
+
+  %% ===== 调度 =====
+  class SimState {
+    +world: BattleWorld
+    +config: GameConfig
+    +session: NetSession
+    +pool: PoolBundle
+    +buses: BusBundle
+    +rng: Rng
+  }
+  class DeterministicSim {
+    +systems: readonly SimSystem[]
+    +step(tick, inputFrame, state) void
+    +hash(state) number
+  }
+  class SimSystem {
+    <<interface>>
+    +id: string
+    +order: number
+    +run(state: SimState, tick: number) void
+  }
+  class App {
+    +state: SimState
+    +sceneManager: SceneManager
+    +registerSimSystem(order, fn, id) void
+    +registerRenderSystem(order, fn, id) void
+    +setRenderer(factory) void
+    +start() void
+  }
+
+  %% ===== 控制源 =====
+  class InputFrame {
+    +moveX: number
+    +moveY: number
+    +aimX: number
+    +aimY: number
+    +buttons: number
+    +tick: number
+    +seq: number
+  }
+  class IControlSource {
+    <<interface>>
+    +kind: 0|1|2
+    +poll(tick: number, out: InputFrame) void
+  }
+  class LocalHumanSource {
+    +kind = 0
+    +poll(tick, out) void
+  }
+  class AIShadowPlayerSystem {
+    +kind = 1
+    +poll(tick, out) void
+  }
+  class RemoteInputSource {
+    +kind = 2
+    +poll(tick, out) void
+  }
+  class ControlSourceRegistry {
+    +bind(eid, source) void
+    +pollAll(tick, world, bus) void
+  }
+
+  %% ===== 网络 =====
+  class EntityRegistry {
+    +alloc(eid, playerId) number
+    +bind(eid, netId, playerId) void
+    +byNetId(netId) Eid
+    +byEid(eid) number
+    +release(netId) void
+    +rebuild(snap) void
+  }
+  class NetSession {
+    +role: AuthorityRole
+    +localNetId: number
+    +hostNetId: number
+    +roomSeed: number
+    +simTick: number
+    +tickRate: 60
+  }
+  class NetSessionManager {
+    +state: NetSession
+    +electNewHost(aliveNetIds) number
+    +onPeerLost(netId) void
+  }
+  class ITransport {
+    <<interface>>
+    +peerId: number
+    +connect(peerId) void
+    +send(msg: NetMessage) void
+    +onMessage(handler) function
+  }
+  class LoopbackTransport {
+    +link(other) void
+    +tick(nowMs) void
+    +setConditions(opts) void
+  }
+  class NullTransport
+  class ISyncStrategy {
+    <<interface>>
+    +reportInput(tick, frame) NetMessage
+    +buildSnapshot(tick) Snapshot
+    +applySnapshot(snap) void
+    +buildDelta(from, to) NetMessage
+  }
+  class PredictionBuffer {
+    +recordInput(tick, frame) void
+    +recordSnapshot(snap) void
+    +reconcile(snap, apply, replay) number
+  }
+  class Snapshot {
+    +tick: number
+    +mask: number
+    +netIds: Uint32Array
+    +data: ArrayBuffer
+  }
+  class FullSnapshotStrategy {
+    +reportInput(tick, frame) NetMessage
+    +buildSnapshot(tick) Snapshot
+    +applySnapshot(snap) void
+  }
+
+  %% ===== 存档 =====
+  class SaveData {
+    +version: 1
+    +meta: Meta
+    +run: Run
+    +perPlayerRunStats: object
+  }
+  class SaveSystem {
+    +load() SaveData
+    +save(data) boolean
+    +saveNow(data) boolean
+  }
+
+  %% ===== 渲染与 UI =====
+  class Renderer {
+    +canvas: HTMLCanvasElement
+    +create(host, quality)$ Promise~Renderer~
+    +setQuality(q) void
+  }
+  class PixiPools {
+    +eidToSlot: Int32Array
+    +slotToEid: Uint32Array
+    +acquire(kind, textureKey, eid) number
+    +release(slot) void
+  }
+  class RenderSyncSystem {
+    +run(alpha: number) void
+  }
+  class SceneManager {
+    +current: Scene
+    +register(id, factory) void
+    +switchTo(id, payload) void
+  }
+  class Scene {
+    <<interface>>
+    +id: SceneId
+    +onEnter(ctx) void
+    +onExit() void
+  }
+
+  %% ===== 关系 =====
+  IControlSource <|.. LocalHumanSource
+  IControlSource <|.. AIShadowPlayerSystem
+  IControlSource <|.. RemoteInputSource
+  ControlSourceRegistry o-- IControlSource : 持有
+  ITransport <|.. LoopbackTransport
+  ITransport <|.. NullTransport
+  ISyncStrategy <|.. FullSnapshotStrategy
+  DeterministicSim o-- SimSystem : 编排
+  SimState o-- BattleWorld
+  SimState o-- GameConfig
+  SimState o-- NetSession
+  SimState o-- Rng
+  SimState o-- SnapshotPool
+  SimState o-- ParamPool
+  SimState o-- EntityPool
+  SimState o-- CommandBus
+  SimState o-- GameEventBus
+  App o-- SimState
+  App o-- SceneManager
+  SceneManager o-- Scene
+  NetSessionManager o-- NetSession
+  NetSessionManager o-- EntityRegistry
+  NetSessionManager o-- ITransport
+  PredictionBuffer o-- Snapshot
+  ISyncStrategy ..> Snapshot : 构建/应用
+  EntityPool <|-- EffectEntityPool
+  RenderSyncSystem o-- PixiPools
+  RenderSyncSystem o-- BattleWorld
+  PixiPools o-- Renderer
+  SaveSystem o-- SaveData
+  BitAdapter ..> BattleWorld : 操作
+  BattleWorld o-- SoAComponent
+  GameConfig o-- Registry
+  Registry ..> GameConfig : 注册内容
+  DeterministicSim ..> SimState : step(tick,input,state)

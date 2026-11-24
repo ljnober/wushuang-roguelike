@@ -1,0 +1,498 @@
+/**
+ * 40 位可选三国武将配置。
+ *
+ * 每位武将的 art 参数（阵营配色 / 发型头饰 / 胡须 / 武器 / 纹样）互不相同，
+ * 足以供 art 层 PortraitFactory、ChibiFactory 程序化生成有辨识度的矢量形象。
+ * 事实来源：DESIGN.md §1 / §8 / §9。
+ */
+import type { GeneralDef } from './types';
+
+export const GENERAL_DEFS: readonly GeneralDef[] = [
+  // ===== 蜀（10）===========================================================
+  {
+    id: 'liubei', name: '刘备', faction: 'shu', title: '仁德之君',
+    art: {
+      colors: { primary: 0x2e8b57, secondary: 0xf5d76e, accent: 0x8b0000, skin: 0xffd8b1 },
+      hair: { style: 2, ornament: 1, color: 0x1a1a1a },
+      beard: { style: 3, color: 0x2b2b2b },
+      weapon: { type: 'sword', style: 1 },
+      pattern: { id: 1, scale: 1.0, rotation: 0 },
+    },
+    baseStats: { hp: 110, atk: 20, speed: 200, armor: 8, crit: 0.05 },
+    skills: ['sweeping_slash', 'war_cry'],
+  },
+  {
+    id: 'guanyu', name: '关羽', faction: 'shu', title: '武圣',
+    art: {
+      colors: { primary: 0x1e7a46, secondary: 0x0b3d2e, accent: 0xc0392b, skin: 0xffd8b1 },
+      hair: { style: 1, ornament: 0, color: 0x111111 },
+      beard: { style: 5, color: 0x111111 },
+      weapon: { type: 'blade', style: 2 },
+      pattern: { id: 2, scale: 1.2, rotation: 15 },
+    },
+    baseStats: { hp: 140, atk: 30, speed: 210, armor: 14, crit: 0.08 },
+    skills: ['dragon_roar', 'sweeping_slash'],
+  },
+  {
+    id: 'zhangfei', name: '张飞', faction: 'shu', title: '万人敌',
+    art: {
+      colors: { primary: 0x2b5d34, secondary: 0x1a1a1a, accent: 0x8b4513, skin: 0xf0c8a0 },
+      hair: { style: 0, ornament: 0, color: 0x0a0a0a },
+      beard: { style: 6, color: 0x0a0a0a },
+      weapon: { type: 'spear', style: 3 },
+      pattern: { id: 3, scale: 1.4, rotation: 0 },
+    },
+    baseStats: { hp: 160, atk: 32, speed: 190, armor: 12, crit: 0.06 },
+    skills: ['thunder_strike', 'war_cry'],
+  },
+  {
+    id: 'zhaoyun', name: '赵云', faction: 'shu', title: '常胜将军',
+    art: {
+      colors: { primary: 0x3cb371, secondary: 0xf0f0f0, accent: 0x1e90ff, skin: 0xffe0bd },
+      hair: { style: 3, ornament: 2, color: 0x2b2b2b },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'spear', style: 1 },
+      pattern: { id: 4, scale: 0.9, rotation: 30 },
+    },
+    baseStats: { hp: 125, atk: 28, speed: 230, armor: 10, crit: 0.10 },
+    skills: ['spear_thrust', 'dragon_roar'],
+  },
+  {
+    id: 'machao', name: '马超', faction: 'shu', title: '锦马超',
+    art: {
+      colors: { primary: 0x2e8b57, secondary: 0xf5f5dc, accent: 0x8b0000, skin: 0xf0c8a0 },
+      hair: { style: 4, ornament: 3, color: 0x3b2f2f },
+      beard: { style: 1, color: 0x3b2f2f },
+      weapon: { type: 'spear', style: 2 },
+      pattern: { id: 5, scale: 1.1, rotation: 45 },
+    },
+    baseStats: { hp: 130, atk: 29, speed: 225, armor: 9, crit: 0.09 },
+    skills: ['spear_thrust', 'tiger_charge'],
+  },
+  {
+    id: 'huangzhong', name: '黄忠', faction: 'shu', title: '老当益壮',
+    art: {
+      colors: { primary: 0x3a7d44, secondary: 0xd2b48c, accent: 0x8b4513, skin: 0xf0d0b0 },
+      hair: { style: 5, ornament: 1, color: 0x808080 },
+      beard: { style: 4, color: 0x909090 },
+      weapon: { type: 'bow', style: 2 },
+      pattern: { id: 6, scale: 1.0, rotation: 0 },
+    },
+    baseStats: { hp: 115, atk: 30, speed: 195, armor: 8, crit: 0.14 },
+    skills: ['arrow_rain', 'moon_slash'],
+  },
+  {
+    id: 'zhugeliang', name: '诸葛亮', faction: 'shu', title: '卧龙',
+    art: {
+      colors: { primary: 0x2f7d5b, secondary: 0xfafad2, accent: 0x191970, skin: 0xffe0bd },
+      hair: { style: 6, ornament: 4, color: 0x1a1a1a },
+      beard: { style: 2, color: 0x2b2b2b },
+      weapon: { type: 'fan', style: 1 },
+      pattern: { id: 7, scale: 0.8, rotation: 60 },
+    },
+    baseStats: { hp: 95, atk: 26, speed: 200, armor: 6, crit: 0.12 },
+    skills: ['fire_wave', 'fan_gust'],
+  },
+  {
+    id: 'jiangwei', name: '姜维', faction: 'shu', title: '麒麟儿',
+    art: {
+      colors: { primary: 0x2e8b57, secondary: 0x4169e1, accent: 0xf0e68c, skin: 0xffd8b1 },
+      hair: { style: 3, ornament: 2, color: 0x1c1c1c },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'saber', style: 2 },
+      pattern: { id: 8, scale: 1.0, rotation: 20 },
+    },
+    baseStats: { hp: 120, atk: 27, speed: 215, armor: 10, crit: 0.10 },
+    skills: ['blade_dance', 'whirlwind'],
+  },
+  {
+    id: 'weiyan', name: '魏延', faction: 'shu', title: '奇谋',
+    art: {
+      colors: { primary: 0x276749, secondary: 0x8b0000, accent: 0x2f4f4f, skin: 0xe8c8a0 },
+      hair: { style: 0, ornament: 0, color: 0x111111 },
+      beard: { style: 3, color: 0x111111 },
+      weapon: { type: 'blade', style: 1 },
+      pattern: { id: 9, scale: 1.3, rotation: 35 },
+    },
+    baseStats: { hp: 135, atk: 28, speed: 205, armor: 11, crit: 0.07 },
+    skills: ['whirlwind', 'war_cry'],
+  },
+  {
+    id: 'pangtong', name: '庞统', faction: 'shu', title: '凤雏',
+    art: {
+      colors: { primary: 0x2f6b4f, secondary: 0x7b68ee, accent: 0xf4a460, skin: 0xf0c8a0 },
+      hair: { style: 6, ornament: 4, color: 0x2b2b2b },
+      beard: { style: 2, color: 0x2b2b2b },
+      weapon: { type: 'staff', style: 2 },
+      pattern: { id: 10, scale: 0.9, rotation: 15 },
+    },
+    baseStats: { hp: 90, atk: 25, speed: 198, armor: 5, crit: 0.12 },
+    skills: ['chain_lightning', 'fire_wave'],
+  },
+
+  // ===== 魏（10）===========================================================
+  {
+    id: 'caocao', name: '曹操', faction: 'wei', title: '乱世枭雄',
+    art: {
+      colors: { primary: 0x2f5f9e, secondary: 0x191970, accent: 0xc0c0c0, skin: 0xffe0bd },
+      hair: { style: 2, ornament: 5, color: 0x2b2b2b },
+      beard: { style: 3, color: 0x2b2b2b },
+      weapon: { type: 'sword', style: 3 },
+      pattern: { id: 11, scale: 1.1, rotation: 0 },
+    },
+    baseStats: { hp: 120, atk: 28, speed: 205, armor: 11, crit: 0.09 },
+    skills: ['war_cry', 'shadow_step'],
+  },
+  {
+    id: 'xiahoudun', name: '夏侯惇', faction: 'wei', title: '独眼将军',
+    art: {
+      colors: { primary: 0x3a6ea5, secondary: 0x8b0000, accent: 0x2f4f4f, skin: 0xe8c8a0 },
+      hair: { style: 1, ornament: 0, color: 0x0a0a0a },
+      beard: { style: 5, color: 0x0a0a0a },
+      weapon: { type: 'halberd', style: 2 },
+      pattern: { id: 12, scale: 1.2, rotation: 10 },
+    },
+    baseStats: { hp: 150, atk: 30, speed: 200, armor: 15, crit: 0.06 },
+    skills: ['sweeping_slash', 'war_cry'],
+  },
+  {
+    id: 'zhangliao', name: '张辽', faction: 'wei', title: '威震逍遥津',
+    art: {
+      colors: { primary: 0x2b5f95, secondary: 0xf0f0f0, accent: 0x1e90ff, skin: 0xffd8b1 },
+      hair: { style: 3, ornament: 2, color: 0x1a1a1a },
+      beard: { style: 1, color: 0x1a1a1a },
+      weapon: { type: 'halberd', style: 1 },
+      pattern: { id: 13, scale: 1.0, rotation: 25 },
+    },
+    baseStats: { hp: 130, atk: 31, speed: 220, armor: 10, crit: 0.10 },
+    skills: ['tiger_charge', 'whirlwind'],
+  },
+  {
+    id: 'xuchu', name: '许褚', faction: 'wei', title: '虎痴',
+    art: {
+      colors: { primary: 0x2f5f9e, secondary: 0x8b4513, accent: 0x1a1a1a, skin: 0xe0b890 },
+      hair: { style: 0, ornament: 0, color: 0x000000 },
+      beard: { style: 6, color: 0x000000 },
+      weapon: { type: 'hammer', style: 2 },
+      pattern: { id: 14, scale: 1.5, rotation: 0 },
+    },
+    baseStats: { hp: 170, atk: 33, speed: 185, armor: 16, crit: 0.05 },
+    skills: ['earthquake', 'war_cry'],
+  },
+  {
+    id: 'dianwei', name: '典韦', faction: 'wei', title: '古之恶来',
+    art: {
+      colors: { primary: 0x2e5c8a, secondary: 0x8b0000, accent: 0x2f4f4f, skin: 0xe8c8a0 },
+      hair: { style: 0, ornament: 0, color: 0x111111 },
+      beard: { style: 6, color: 0x111111 },
+      weapon: { type: 'axe', style: 3 },
+      pattern: { id: 15, scale: 1.4, rotation: 45 },
+    },
+    baseStats: { hp: 165, atk: 34, speed: 190, armor: 14, crit: 0.06 },
+    skills: ['earthquake', 'sweeping_slash'],
+  },
+  {
+    id: 'guojia', name: '郭嘉', faction: 'wei', title: '鬼才',
+    art: {
+      colors: { primary: 0x3a6ea5, secondary: 0x9370db, accent: 0xf0e68c, skin: 0xffe0bd },
+      hair: { style: 6, ornament: 4, color: 0x2b2b2b },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'staff', style: 1 },
+      pattern: { id: 1, scale: 0.8, rotation: 60 },
+    },
+    baseStats: { hp: 88, atk: 27, speed: 200, armor: 5, crit: 0.14 },
+    skills: ['ice_nova', 'chain_lightning'],
+  },
+  {
+    id: 'simayi', name: '司马懿', faction: 'wei', title: '鹰视狼顾',
+    art: {
+      colors: { primary: 0x2b4c7e, secondary: 0x191970, accent: 0x6a5acd, skin: 0xf0c8a0 },
+      hair: { style: 5, ornament: 5, color: 0x1a1a1a },
+      beard: { style: 2, color: 0x1a1a1a },
+      weapon: { type: 'staff', style: 3 },
+      pattern: { id: 2, scale: 0.9, rotation: 30 },
+    },
+    baseStats: { hp: 100, atk: 29, speed: 198, armor: 7, crit: 0.13 },
+    skills: ['shadow_step', 'soul_drain'],
+  },
+  {
+    id: 'caren', name: '曹仁', faction: 'wei', title: '大将军',
+    art: {
+      colors: { primary: 0x2f5f9e, secondary: 0x696969, accent: 0x1e90ff, skin: 0xffd8b1 },
+      hair: { style: 1, ornament: 1, color: 0x2b2b2b },
+      beard: { style: 4, color: 0x2b2b2b },
+      weapon: { type: 'shield', style: 2 },
+      pattern: { id: 3, scale: 1.1, rotation: 0 },
+    },
+    baseStats: { hp: 155, atk: 25, speed: 190, armor: 18, crit: 0.04 },
+    skills: ['golden_shield', 'war_cry'],
+  },
+  {
+    id: 'xuhuang', name: '徐晃', faction: 'wei', title: '虎臣',
+    art: {
+      colors: { primary: 0x2b5f95, secondary: 0xa0522d, accent: 0x2f4f4f, skin: 0xe8c8a0 },
+      hair: { style: 2, ornament: 0, color: 0x111111 },
+      beard: { style: 3, color: 0x111111 },
+      weapon: { type: 'axe', style: 1 },
+      pattern: { id: 4, scale: 1.2, rotation: 20 },
+    },
+    baseStats: { hp: 135, atk: 29, speed: 205, armor: 12, crit: 0.07 },
+    skills: ['sweeping_slash', 'tiger_charge'],
+  },
+  {
+    id: 'zhanghe', name: '张郃', faction: 'wei', title: '巧变',
+    art: {
+      colors: { primary: 0x3a6ea5, secondary: 0x8fbc8f, accent: 0x191970, skin: 0xffd8b1 },
+      hair: { style: 3, ornament: 2, color: 0x2b2b2b },
+      beard: { style: 1, color: 0x2b2b2b },
+      weapon: { type: 'spear', style: 2 },
+      pattern: { id: 5, scale: 1.0, rotation: 40 },
+    },
+    baseStats: { hp: 125, atk: 28, speed: 215, armor: 10, crit: 0.09 },
+    skills: ['spear_thrust', 'whirlwind'],
+  },
+
+  // ===== 吴（10）===========================================================
+  {
+    id: 'sunquan', name: '孙权', faction: 'wu', title: '碧眼儿',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x1e90ff, accent: 0xf0e68c, skin: 0xffe0bd },
+      hair: { style: 2, ornament: 5, color: 0x1a1a1a },
+      beard: { style: 2, color: 0x1a1a1a },
+      weapon: { type: 'sword', style: 2 },
+      pattern: { id: 6, scale: 1.0, rotation: 0 },
+    },
+    baseStats: { hp: 118, atk: 26, speed: 205, armor: 10, crit: 0.09 },
+    skills: ['war_cry', 'dragon_roar'],
+  },
+  {
+    id: 'zhouyu', name: '周瑜', faction: 'wu', title: '美周郎',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x87ceeb, accent: 0xfafad2, skin: 0xffe0bd },
+      hair: { style: 3, ornament: 3, color: 0x1c1c1c },
+      beard: { style: 1, color: 0x1c1c1c },
+      weapon: { type: 'blade', style: 1 },
+      pattern: { id: 7, scale: 0.9, rotation: 15 },
+    },
+    baseStats: { hp: 112, atk: 30, speed: 215, armor: 8, crit: 0.12 },
+    skills: ['fire_wave', 'phoenix'],
+  },
+  {
+    id: 'lvmeng', name: '吕蒙', faction: 'wu', title: '士别三日',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x2f4f4f, accent: 0xcd853f, skin: 0xf0c8a0 },
+      hair: { style: 1, ornament: 1, color: 0x111111 },
+      beard: { style: 3, color: 0x111111 },
+      weapon: { type: 'saber', style: 2 },
+      pattern: { id: 8, scale: 1.1, rotation: 25 },
+    },
+    baseStats: { hp: 125, atk: 29, speed: 210, armor: 11, crit: 0.10 },
+    skills: ['blade_dance', 'shadow_step'],
+  },
+  {
+    id: 'luxun', name: '陆逊', faction: 'wu', title: '书生拜将',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x98fb98, accent: 0xf0e68c, skin: 0xffe0bd },
+      hair: { style: 4, ornament: 4, color: 0x2b2b2b },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'fan', style: 2 },
+      pattern: { id: 9, scale: 0.8, rotation: 45 },
+    },
+    baseStats: { hp: 98, atk: 28, speed: 210, armor: 7, crit: 0.13 },
+    skills: ['fire_wave', 'web_trap'],
+  },
+  {
+    id: 'ganning', name: '甘宁', faction: 'wu', title: '锦帆贼',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0xffd700, accent: 0x1a1a1a, skin: 0xe8c8a0 },
+      hair: { style: 0, ornament: 2, color: 0x0a0a0a },
+      beard: { style: 5, color: 0x0a0a0a },
+      weapon: { type: 'dualBlades', style: 1 },
+      pattern: { id: 10, scale: 1.2, rotation: 35 },
+    },
+    baseStats: { hp: 122, atk: 31, speed: 230, armor: 9, crit: 0.12 },
+    skills: ['blade_dance', 'whirlwind'],
+  },
+  {
+    id: 'taishici', name: '太史慈', faction: 'wu', title: '神射',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x8b4513, accent: 0x1e90ff, skin: 0xf0c8a0 },
+      hair: { style: 3, ornament: 0, color: 0x2b2b2b },
+      beard: { style: 4, color: 0x2b2b2b },
+      weapon: { type: 'bow', style: 3 },
+      pattern: { id: 11, scale: 1.0, rotation: 0 },
+    },
+    baseStats: { hp: 120, atk: 30, speed: 220, armor: 9, crit: 0.13 },
+    skills: ['arrow_rain', 'moon_slash'],
+  },
+  {
+    id: 'huanggai', name: '黄盖', faction: 'wu', title: '苦肉计',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x696969, accent: 0x8b0000, skin: 0xe0b890 },
+      hair: { style: 5, ornament: 1, color: 0x808080 },
+      beard: { style: 4, color: 0x909090 },
+      weapon: { type: 'whip', style: 2 },
+      pattern: { id: 12, scale: 1.3, rotation: 20 },
+    },
+    baseStats: { hp: 140, atk: 27, speed: 195, armor: 13, crit: 0.06 },
+    skills: ['fire_wave', 'war_cry'],
+  },
+  {
+    id: 'sunshangxiang', name: '孙尚香', faction: 'wu', title: '弓腰姬',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0xffb6c1, accent: 0xffd700, skin: 0xffe0bd },
+      hair: { style: 8, ornament: 6, color: 0x2b2b2b },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'bow', style: 1 },
+      pattern: { id: 13, scale: 0.7, rotation: 30 },
+    },
+    baseStats: { hp: 100, atk: 29, speed: 225, armor: 6, crit: 0.16 },
+    skills: ['arrow_rain', 'shadow_step'],
+  },
+  {
+    id: 'lusu', name: '鲁肃', faction: 'wu', title: '忠厚长者',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0xf5deb3, accent: 0x87ceeb, skin: 0xffe0bd },
+      hair: { style: 6, ornament: 4, color: 0x1a1a1a },
+      beard: { style: 2, color: 0x1a1a1a },
+      weapon: { type: 'fan', style: 1 },
+      pattern: { id: 14, scale: 0.9, rotation: 0 },
+    },
+    baseStats: { hp: 105, atk: 24, speed: 200, armor: 8, crit: 0.08 },
+    skills: ['heal_light', 'fan_gust'],
+  },
+  {
+    id: 'chengpu', name: '程普', faction: 'wu', title: '江表虎臣',
+    art: {
+      colors: { primary: 0xb22222, secondary: 0x2f4f4f, accent: 0xcd853f, skin: 0xe8c8a0 },
+      hair: { style: 1, ornament: 0, color: 0x2b2b2b },
+      beard: { style: 5, color: 0x2b2b2b },
+      weapon: { type: 'spear', style: 1 },
+      pattern: { id: 15, scale: 1.1, rotation: 15 },
+    },
+    baseStats: { hp: 138, atk: 27, speed: 195, armor: 14, crit: 0.05 },
+    skills: ['spear_thrust', 'war_cry'],
+  },
+
+  // ===== 群雄（10）=========================================================
+  {
+    id: 'lvbu', name: '吕布', faction: 'qun', title: '飞将',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x8b0000, accent: 0xffd700, skin: 0xffe0bd },
+      hair: { style: 4, ornament: 7, color: 0x111111 },
+      beard: { style: 1, color: 0x111111 },
+      weapon: { type: 'halberd', style: 3 },
+      pattern: { id: 1, scale: 1.3, rotation: 45 },
+    },
+    baseStats: { hp: 150, atk: 38, speed: 235, armor: 12, crit: 0.12 },
+    skills: ['sweeping_slash', 'tiger_charge'],
+  },
+  {
+    id: 'diaochan', name: '貂蝉', faction: 'qun', title: '闭月',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0xffb6c1, accent: 0xffd700, skin: 0xffe0bd },
+      hair: { style: 8, ornament: 8, color: 0x0a0a0a },
+      beard: { style: 0, color: 0x000000 },
+      weapon: { type: 'dualBlades', style: 2 },
+      pattern: { id: 2, scale: 0.6, rotation: 60 },
+    },
+    baseStats: { hp: 92, atk: 26, speed: 225, armor: 5, crit: 0.15 },
+    skills: ['soul_drain', 'blade_dance'],
+  },
+  {
+    id: 'zhangjiao', name: '张角', faction: 'qun', title: '太平道人',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x1e90ff, accent: 0xf0e68c, skin: 0xf0c8a0 },
+      hair: { style: 5, ornament: 6, color: 0x808080 },
+      beard: { style: 4, color: 0x909090 },
+      weapon: { type: 'staff', style: 3 },
+      pattern: { id: 3, scale: 0.9, rotation: 0 },
+    },
+    baseStats: { hp: 95, atk: 30, speed: 200, armor: 6, crit: 0.11 },
+    skills: ['chain_lightning', 'poison_cloud'],
+  },
+  {
+    id: 'dongzhuo', name: '董卓', faction: 'qun', title: '暴君',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x8b0000, accent: 0x2f4f4f, skin: 0xe0b890 },
+      hair: { style: 0, ornament: 0, color: 0x111111 },
+      beard: { style: 6, color: 0x111111 },
+      weapon: { type: 'blade', style: 3 },
+      pattern: { id: 4, scale: 1.5, rotation: 10 },
+    },
+    baseStats: { hp: 175, atk: 32, speed: 180, armor: 17, crit: 0.04 },
+    skills: ['earthquake', 'war_cry'],
+  },
+  {
+    id: 'yuanshao', name: '袁绍', faction: 'qun', title: '四世三公',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x191970, accent: 0xc0c0c0, skin: 0xffe0bd },
+      hair: { style: 2, ornament: 5, color: 0x2b2b2b },
+      beard: { style: 3, color: 0x2b2b2b },
+      weapon: { type: 'sword', style: 1 },
+      pattern: { id: 5, scale: 1.1, rotation: 20 },
+    },
+    baseStats: { hp: 115, atk: 25, speed: 200, armor: 10, crit: 0.07 },
+    skills: ['war_cry', 'arrow_rain'],
+  },
+  {
+    id: 'gongsunzan', name: '公孙瓒', faction: 'qun', title: '白马将军',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0xf0f0f0, accent: 0x1e90ff, skin: 0xffd8b1 },
+      hair: { style: 3, ornament: 2, color: 0x1a1a1a },
+      beard: { style: 1, color: 0x1a1a1a },
+      weapon: { type: 'spear', style: 3 },
+      pattern: { id: 6, scale: 1.0, rotation: 35 },
+    },
+    baseStats: { hp: 125, atk: 29, speed: 230, armor: 9, crit: 0.11 },
+    skills: ['tiger_charge', 'spear_thrust'],
+  },
+  {
+    id: 'mateng', name: '马腾', faction: 'qun', title: '西凉雄主',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x8b4513, accent: 0x2e8b57, skin: 0xe8c8a0 },
+      hair: { style: 1, ornament: 0, color: 0x0a0a0a },
+      beard: { style: 5, color: 0x0a0a0a },
+      weapon: { type: 'blade', style: 2 },
+      pattern: { id: 7, scale: 1.3, rotation: 50 },
+    },
+    baseStats: { hp: 140, atk: 30, speed: 210, armor: 12, crit: 0.08 },
+    skills: ['sweeping_slash', 'tiger_charge'],
+  },
+  {
+    id: 'huaxiong', name: '华雄', faction: 'qun', title: '汜水关守将',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x2f4f4f, accent: 0x8b0000, skin: 0xd8b090 },
+      hair: { style: 0, ornament: 0, color: 0x000000 },
+      beard: { style: 6, color: 0x000000 },
+      weapon: { type: 'blade', style: 1 },
+      pattern: { id: 8, scale: 1.4, rotation: 0 },
+    },
+    baseStats: { hp: 160, atk: 31, speed: 190, armor: 15, crit: 0.05 },
+    skills: ['war_cry', 'earthquake'],
+  },
+  {
+    id: 'yanliang', name: '颜良', faction: 'qun', title: '河北名将',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0xa0522d, accent: 0x1e90ff, skin: 0xe8c8a0 },
+      hair: { style: 1, ornament: 1, color: 0x111111 },
+      beard: { style: 4, color: 0x111111 },
+      weapon: { type: 'halberd', style: 2 },
+      pattern: { id: 9, scale: 1.2, rotation: 25 },
+    },
+    baseStats: { hp: 145, atk: 32, speed: 200, armor: 13, crit: 0.06 },
+    skills: ['sweeping_slash', 'dragon_roar'],
+  },
+  {
+    id: 'chenggong', name: '陈宫', faction: 'qun', title: '智谋之士',
+    art: {
+      colors: { primary: 0x8e44ad, secondary: 0x9370db, accent: 0xf0e68c, skin: 0xffe0bd },
+      hair: { style: 6, ornament: 4, color: 0x2b2b2b },
+      beard: { style: 2, color: 0x2b2b2b },
+      weapon: { type: 'fan', style: 3 },
+      pattern: { id: 10, scale: 0.8, rotation: 40 },
+    },
+    baseStats: { hp: 90, atk: 26, speed: 200, armor: 6, crit: 0.12 },
+    skills: ['fire_wave', 'chain_lightning'],
+  },
+] as const;

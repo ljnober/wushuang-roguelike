@@ -1,0 +1,189 @@
+/* 《无双》全局样式：重置 + 画布容器 + HUD 布局 + 移动端安全区 */
+
+:root {
+  --ws-ink: #120d08;
+  --ws-paper: #f4e7c8;
+  --ws-gold: #e8b84b;
+  --ws-red: #b3352b;
+  --ws-hit-min: 44px;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--ws-ink);
+  color: var(--ws-paper);
+  font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#app {
+  position: relative;
+  isolation: isolate;
+}
+
+/* HUD 覆盖层：容器本身不拦截指针，交互元素单独开启 */
+.hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 8px)
+    calc(env(safe-area-inset-right, 0px) + 8px)
+    calc(env(safe-area-inset-bottom, 0px) + 8px)
+    calc(env(safe-area-inset-left, 0px) + 8px);
+}
+
+.hud__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hud__row--bottom {
+  align-items: flex-end;
+}
+
+.hud__panel {
+  pointer-events: auto;
+  background: rgba(18, 13, 8, 0.72);
+  border: 1px solid rgba(232, 184, 75, 0.45);
+  border-radius: 10px;
+  padding: 8px 12px;
+  line-height: 1.4;
+}
+
+.hud__bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.hud__bar-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--ws-red), var(--ws-gold));
+  transition: width 90ms linear;
+}
+
+/* 所有按钮/命中区 ≥44px，多指各自 setPointerCapture */
+.hit-target,
+button,
+.hud button,
+.touch-control {
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  touch-action: none;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  color: var(--ws-paper);
+  background: rgba(30, 22, 14, 0.9);
+  border: 1px solid var(--ws-gold);
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 场景/弹窗覆盖层 */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  background: rgba(8, 6, 4, 0.82);
+  pointer-events: auto;
+  overflow-y: auto;
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.panel {
+  width: min(560px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: #1c150e;
+  border: 1px solid var(--ws-gold);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+/* 摇杆 */
+.joystick {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 184, 75, 0.6);
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.joystick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(232, 184, 75, 0.75);
+  pointer-events: none;
+}
+
+.skill-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.skill-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  font-size: 13px;
+}
