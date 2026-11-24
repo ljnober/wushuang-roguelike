@@ -105,6 +105,21 @@ test('结算契约与重开闭环：文案/无二次计分/弹窗不遮挡/时�
   });
   await expect(page.locator('.result-panel')).toBeVisible();
 
+  // 合法的渲染同步：跨过 HUDSystem 100ms drain 节流后补一帧 rawDt=0 的 frameStep。
+  // 不推进 tick、不注入事件、不改 session；若 HUD 仍滞后于权威 session，轮询等待其追平。
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __fullRunApp?: { frameStep(t: number): void; lastTime: number };
+      __fullRunTime?: number;
+    };
+    const app = w.__fullRunApp;
+    if (app !== undefined) app.frameStep(w.__fullRunTime ?? app.lastTime);
+  });
+  await expect
+    .poll(async () => (await readHud(page)).score, { timeout: 5_000 })
+    .toBe(terminal.score);
+
   const panel = await readResultPanel(page);
   const hud = await readHud(page);
   const session = await readResultSession(page);
