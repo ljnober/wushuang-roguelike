@@ -191,6 +191,11 @@ export class HUD implements HUDLike {
   }
 
   toast(text: string): void {
+    // 同一提示短时间内只显示一次，避免节流事件重复推送时堆叠成排。
+    const children = this.toastBox.children;
+    for (let i = 0; i < children.length; i++) {
+      if (children[i].textContent === text) return;
+    }
     const node = el('div', 'hud__toast', text);
     this.toastBox.append(node);
     window.setTimeout(() => node.remove(), 2200);
@@ -202,10 +207,17 @@ export class HUD implements HUDLike {
   /** HUDLike 契约：消费 GameEventBus 的节流事件。 */
   onEvent(event: GameEvent): void {
     switch (event.type) {
+      case GameEventType.Damage:
+        // 受击时给血条一次短促闪光，强化打击反馈（只读事件，不改数值）。
+        this.hpFill.classList.remove('hud__flash');
+        void this.hpFill.offsetWidth;
+        this.hpFill.classList.add('hud__flash');
+        break;
       case GameEventType.Kill:
         // Kill 事件的 b 是击杀者 eid、c 是伤害值，都不是击杀数：
         // 每次事件固定 +1，避免影子玩家(eid 2/3)把计数加成 2/3。
         this.setKills(this.kills + 1);
+        if (this.kills > 0 && this.kills % 10 === 0) this.toast(`连斩 ${this.kills}`);
         break;
       case GameEventType.LevelUp:
         this.setLevel(

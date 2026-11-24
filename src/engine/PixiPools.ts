@@ -33,6 +33,14 @@ interface SlotRecord {
 
 const DEFAULT_TEXTURE_KEY = 'white';
 
+/** 渲染层的视觉尺寸：程序化纹理只有约 40px，按类型放大以适应现代屏幕。只影响绘制，不改游戏数值。 */
+function baseScaleFor(kind: RenderKind, key: string): number {
+  if (kind === 'chibi') return key.indexOf('boss') >= 0 ? 2.15 : 1.8;
+  if (kind === 'bullet') return 1.45;
+  if (kind === 'pickup') return 1.3;
+  return 1.35;
+}
+
 /** 创建空槽记录（只在构造期批量分配，热路径复用）。 */
 function makeSlot(): SlotRecord {
   return {
@@ -208,7 +216,7 @@ export class PixiPools {
     record.flipX = false;
     record.tint = 0xffffff;
     record.alpha = 1;
-    record.baseScale = kind === 'chibi' ? 1 : 1;
+    record.baseScale = baseScaleFor(kind, textureKey);
     this.attach(record, kind, textureKey);
 
     this.eidToSlot[eid] = slot;

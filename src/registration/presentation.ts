@@ -17,6 +17,7 @@ import { Renderer } from '../engine/Renderer';
 import { PixiPools } from '../engine/PixiPools';
 import { Viewport } from '../engine/Viewport';
 import { TextureFactory } from '../engine/TextureFactory';
+import { BattleFxSystem } from '../engine/BattleFx';
 import { Audio } from '../engine/Audio';
 import { PortraitFactory } from '../art/PortraitFactory';
 import { ChibiFactory } from '../art/ChibiFactory';
@@ -63,11 +64,12 @@ const EXTRA_CSS = `
 .chip,.faction-chip{min-height:36px;font-size:12px;padding:4px 10px}.meta-list{max-height:260px;overflow-y:auto;display:grid;gap:4px}
 .meta-list button{text-align:left;min-height:40px;font-size:12px}.gem-row{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px}
 .leaderboard{font-size:13px;line-height:1.8;padding-left:22px}.setting-label{min-width:96px;font-size:12px}
-.general-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;max-height:56vh;overflow-y:auto}
-.general-card{min-height:132px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px}
-.general-portrait{width:74px;height:74px;border-radius:12px}.general-name{font-size:13px}.general-title{font-size:10px;opacity:.6}
-.boot-title,.menu-title,.result-title{font-size:44px;color:#e8b84b;text-align:center}.boot-sub,.menu-sub,.result-lines{text-align:center;opacity:.75;margin:10px 0}
-.boot-enter,.primary{border-color:#8ce8ff}.menu-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
+.general-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;max-height:56vh;overflow-y:auto;padding:4px}
+.general-card{min-height:146px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:linear-gradient(160deg,rgba(58,42,25,.9),rgba(31,22,14,.94));border-color:rgba(232,184,75,.42);transition:transform 120ms ease,border-color 120ms ease,filter 120ms ease}
+.general-card:hover{transform:translateY(-3px);border-color:#8ce8ff;filter:brightness(1.12)}
+.general-portrait{width:82px;height:82px;border-radius:14px;box-shadow:0 5px 16px rgba(0,0,0,.55)}.general-name{font-size:14px;font-weight:700}.general-title{font-size:10px;opacity:.65}
+.boot-title,.menu-title,.result-title{font-size:clamp(48px,8vw,76px);letter-spacing:.2em;text-align:center;line-height:1.15;background:linear-gradient(180deg,#ffe9a8,#e8b84b 55%,#9b6c1e);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 18px rgba(232,184,75,.32))}.boot-sub,.menu-sub,.result-lines{text-align:center;opacity:.8;margin:12px 0;letter-spacing:.12em;font-size:14px}
+.boot-enter,.primary{border-color:#f6dda0;background:linear-gradient(180deg,#e0b253,#a5741f);color:#1a1107;font-weight:800;letter-spacing:.12em;min-width:132px}.menu-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:22px}
 .ws-debug{position:absolute;top:4px;left:4px;z-index:99;background:rgba(0,0,0,.8);color:#7dffb0;font:11px/1.5 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre}
 @media (max-width:640px){.equip-columns{grid-template-columns:1fr}.card-grid{grid-template-columns:1fr}.general-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 `;
@@ -77,6 +79,7 @@ interface Runtime {
   pools: PixiPools | null;
   textures: TextureFactory | null;
   chibi: ChibiFactory | null;
+  fx: BattleFxSystem | null;
   viewport: Viewport;
   viewportSystem: ViewportSystem | null;
   renderSync: RenderSyncSystem | null;
@@ -84,6 +87,7 @@ interface Runtime {
   worldToken: BattleWorld | null;
   busToken: GameEventBus | null;
   debugPanel: HTMLDivElement | null;
+  lastFxAt: number;
   frames: number;
   fps: number;
   lastFpsAt: number;
@@ -108,6 +112,7 @@ export function register(app: App): void {
     pools: null,
     textures: null,
     chibi: null,
+    fx: null,
     viewport: new Viewport(host?.clientWidth ?? 1280, host?.clientHeight ?? 720),
     viewportSystem: null,
     renderSync: null,
@@ -115,6 +120,7 @@ export function register(app: App): void {
     worldToken: null,
     busToken: null,
     debugPanel: null,
+    lastFxAt: 0,
     frames: 0,
     fps: 0,
     lastFpsAt: 0,
@@ -169,9 +175,11 @@ export function register(app: App): void {
       runtime.textures = textures;
       runtime.chibi = chibi;
       runtime.viewport.applyTo(pools.getRoot());
+      runtime.fx = new BattleFxSystem(runtime.pools.getRoot());
     }
     if (world === null || world === runtime.worldToken) return;
     runtime.worldToken = world;
+    runtime.fx?.reset();
     runtime.viewport.reset();
     runtime.viewportSystem = new ViewportSystem(world, runtime.viewport);
     runtime.renderSync = new RenderSyncSystem(runtime.pools, world);
@@ -333,6 +341,16 @@ export function register(app: App): void {
     runtime.renderSync?.run(alpha);
     runtime.viewport.applyTo(runtime.pools.getRoot());
   }, 'RenderSyncSystem');
+
+  // 纯渲染反馈：敌人血条 / 伤害数字 / 命中碎片，不参与模拟。
+  app.registerRenderSystem(25, () => {
+    const world = app.state.world as BattleWorld | null;
+    if (world === null) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const dt = runtime.lastFxAt === 0 ? 0 : (now - runtime.lastFxAt) / 1000;
+    runtime.lastFxAt = now;
+    runtime.fx?.run(world, dt);
+  }, 'BattleFxSystem');
 
   app.registerRenderSystem(30, () => {
     const world = app.state.world as BattleWorld | null;

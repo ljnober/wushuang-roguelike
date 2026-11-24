@@ -159,7 +159,8 @@ export class EquipmentUI {
 
     const header = document.createElement('header');
     header.className = 'panel__header';
-    header.append(span(`配装 · ${this.generalId}`, 'panel__title'));
+    const general = this.config.generals.tryGet(this.generalId);
+    header.append(span(`配装 · ${general?.name ?? this.generalId}`, 'panel__title'));
     const close = button('关闭');
     close.addEventListener('click', () => this.close());
     header.append(close);
@@ -193,6 +194,9 @@ export class EquipmentUI {
     const inventory = document.createElement('div');
     inventory.className = 'inventory';
     inventory.append(span('仓库', 'section-title'));
+    if (this.save.meta.warehouse.items.length === 0) {
+      inventory.append(span('暂无装备：战斗掉落会在结算后入库', 'hint'));
+    }
     for (let c = 0; c < 3; c++) {
       const category = c === 0 ? 'armor' : c === 1 ? 'jewelry' : 'weapon';
       const name = c === 0 ? '防具' : c === 1 ? '首饰' : '武器';
@@ -244,7 +248,9 @@ export class EquipmentUI {
   private describeItem(item: EquipmentItem): string {
     const def = this.config.equipment.tryGet(item.defId);
     const rarity = def === undefined ? RARITY_DEFS[0] : findRarity(def.rarity);
-    const name = def === undefined ? item.defId : def.id;
+    const name = def === undefined
+      ? item.defId
+      : (SLOT_DEFS.find((s) => s.id === def.slot)?.name ?? def.id);
     const sockets = item.gems.length > 0 ? ` [${item.gems.length}/${item.sockets}]` : '';
     return `${rarity.name}·${name}${sockets}`;
   }

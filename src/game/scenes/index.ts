@@ -248,7 +248,8 @@ export class SelectScene extends OverlayScene {
     content.append(grid);
 
     const footer = el('div', 'panel__row');
-    footer.append(el('span', 'hint', `已选：${this.selected || '无'}`));
+    const selectedDef = this.deps.config.generals.tryGet(this.selected);
+    footer.append(el('span', 'hint', `已选：${selectedDef?.name ?? (this.selected || '无')}`));
     const confirm = button('出征', 'primary');
     confirm.addEventListener('click', () => {
       if (this.selected.length === 0) return;
@@ -388,7 +389,8 @@ export class SettingsScene extends OverlayScene {
     const roles: Array<'auto' | 'host' | 'client'> = ['auto', 'host', 'client'];
     for (let i = 0; i < roles.length; i++) {
       const role = roles[i];
-      const node = button(role, `chip ${settings.netRolePreferred === role ? 'is-active' : ''}`);
+      const roleLabel = role === 'auto' ? '自动' : role === 'host' ? '主机' : '客户端';
+      const node = button(roleLabel, `chip ${settings.netRolePreferred === role ? 'is-active' : ''}`);
       node.addEventListener('click', () => {
         settings.netRolePreferred = role;
         this.deps.saveSystem.save(this.deps.save);

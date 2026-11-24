@@ -11,6 +11,8 @@ import {
   CUBE_SLOTS,
   LEGENDARY_EFFECT_DEFS,
   MATERIAL_DEFS,
+  SLOT_DEFS,
+  findRarity,
   legendaryGemCost,
   legendaryGemRate,
 } from '../data/equipment';
@@ -273,7 +275,8 @@ export class MetaUI {
       const slot = CUBE_SLOTS[i];
       const effectId = this.save.meta.cube.slots[slot] ?? null;
       const effect = effectId === null ? null : LEGENDARY_EFFECT_DEFS.find((e) => e.id === effectId);
-      const node = btn(`${slot}: ${effect !== undefined && effect !== null ? effect.name : '空'}`);
+      const slotLabel = slot === 'weapon' ? '武器' : slot === 'armor' ? '护甲' : slot === 'jewelry' ? '首饰' : slot;
+      const node = btn(`${slotLabel}：${effect !== undefined && effect !== null ? effect.name : '空'}`);
       if (effectId !== null && this.save.meta.cube.extracted.indexOf(effectId) >= 0) {
         node.addEventListener('click', () => {
           this.save!.meta.cube.slots[slot] = null;
@@ -291,7 +294,12 @@ export class MetaUI {
       const item = items[i];
       const def = this.config.equipment.tryGet(item.defId);
       if (def === undefined) continue;
-      const row = btn(`[${def.rarity}] ${def.id}${item.legendaryEffectId ? ` ✦${item.legendaryEffectId}` : ''}`);
+      const slotName = SLOT_DEFS.find((s) => s.id === def.slot)?.name ?? def.slot;
+      const rarityName = findRarity(def.rarity).name;
+      const effectName = item.legendaryEffectId === undefined
+        ? ''
+        : ` · ${LEGENDARY_EFFECT_DEFS.find((e) => e.id === item.legendaryEffectId)?.name ?? item.legendaryEffectId}`;
+      const row = btn(`${rarityName}·${slotName}${effectName}`);
       if (item.uid === this.selectedUid) row.classList.add('is-selected');
       row.addEventListener('click', () => {
         this.selectedUid = item.uid;

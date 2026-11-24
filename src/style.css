@@ -46,6 +46,21 @@ canvas {
 #app {
   position: relative;
   isolation: isolate;
+  /* 战场地面：透明 Pixi 画布下透出网格与暖色光晕，避免一整片死黑。 */
+  background:
+    radial-gradient(ellipse 58% 46% at 50% 42%, rgba(150, 104, 48, 0.22), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(232, 184, 75, 0.035) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(90deg, rgba(232, 184, 75, 0.035) 0 1px, transparent 1px 72px),
+    linear-gradient(165deg, #241a10 0%, #100b07 56%, #080604 100%);
+}
+
+#app::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, transparent 42%, rgba(0, 0, 0, 0.58) 100%);
 }
 
 /* HUD 覆盖层：容器本身不拦截指针，交互元素单独开启 */
@@ -76,11 +91,35 @@ canvas {
 
 .hud__panel {
   pointer-events: auto;
-  background: rgba(18, 13, 8, 0.72);
-  border: 1px solid rgba(232, 184, 75, 0.45);
-  border-radius: 10px;
-  padding: 8px 12px;
+  min-width: 148px;
+  background: linear-gradient(160deg, rgba(34, 24, 15, 0.9), rgba(14, 10, 7, 0.88));
+  border: 1px solid rgba(232, 184, 75, 0.5);
+  border-radius: 12px;
+  padding: 9px 13px;
   line-height: 1.4;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 228, 170, 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.hud__label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #c9a86a;
+}
+
+.hud__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@keyframes ws-hp-flash {
+  0% { box-shadow: 0 0 0 0 rgba(255, 90, 72, 0.9); filter: brightness(1.9); }
+  100% { box-shadow: 0 0 14px 4px rgba(255, 90, 72, 0); filter: brightness(1); }
+}
+
+.hud__bar-fill.hud__flash {
+  animation: ws-hp-flash 220ms ease-out;
 }
 
 .hud__bar {
@@ -114,11 +153,32 @@ button,
 
 button {
   color: var(--ws-paper);
-  background: rgba(30, 22, 14, 0.9);
-  border: 1px solid var(--ws-gold);
+  background: linear-gradient(180deg, #3c2c1b, #24190f);
+  border: 1px solid rgba(232, 184, 75, 0.72);
   border-radius: 10px;
   font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  padding: 8px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.12), 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 100ms ease, filter 100ms ease, border-color 100ms ease;
+}
+
+button:hover {
+  filter: brightness(1.14);
+  border-color: #f4d68a;
+}
+
+button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+button.primary {
+  color: #1a1107;
+  background: linear-gradient(180deg, #e0b253, #a5741f);
+  border-color: #f6dda0;
+  text-shadow: none;
 }
 
 /* 场景/弹窗覆盖层 */
@@ -130,23 +190,42 @@ button {
   justify-content: center;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
     env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-  background: rgba(8, 6, 4, 0.82);
+  background: radial-gradient(ellipse at 50% 44%, rgba(26, 18, 11, 0.76), rgba(6, 4, 3, 0.94));
   pointer-events: auto;
   overflow-y: auto;
+  backdrop-filter: blur(2px);
 }
 
 .overlay[hidden] {
   display: none;
 }
 
+/* 层级：场景覆盖层 < HUD/触控 < 弹窗面板 < 调试面板。
+   弹窗（装备/魔盒/升级）必须盖在 scene 之上，否则其按钮会被场景遮罩拦截点击。 */
+.overlay.scene {
+  z-index: 10;
+}
+
+.hud,
+.touch-controls {
+  z-index: 20;
+}
+
+.overlay.ws-equipment,
+.overlay.ws-meta,
+.overlay.ws-levelup {
+  z-index: 30;
+}
+
 .panel {
-  width: min(560px, 100%);
+  width: min(620px, 100%);
   max-height: 100%;
   overflow-y: auto;
-  background: #1c150e;
-  border: 1px solid var(--ws-gold);
-  border-radius: 14px;
-  padding: 18px;
+  background: linear-gradient(160deg, rgba(44, 32, 20, 0.98), rgba(25, 18, 12, 0.98));
+  border: 1px solid rgba(232, 184, 75, 0.62);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 232, 180, 0.12);
 }
 
 /* 摇杆 */
@@ -155,8 +234,9 @@ button {
   width: 132px;
   height: 132px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 184, 75, 0.6);
-  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(232, 184, 75, 0.68);
+  background: radial-gradient(circle, rgba(232, 184, 75, 0.1) 0 38%, rgba(0, 0, 0, 0.45) 70%);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.6), 0 6px 20px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
   touch-action: none;
 }
@@ -165,11 +245,13 @@ button {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(232, 184, 75, 0.75);
+  background: radial-gradient(circle at 35% 30%, #f5d88f, #b78024 70%);
+  border: 1px solid #f6dda0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
@@ -186,4 +268,11 @@ button {
   height: 60px;
   border-radius: 50%;
   font-size: 13px;
+  background: radial-gradient(circle at 40% 30%, rgba(232, 184, 75, 0.34), rgba(35, 24, 14, 0.96) 72%);
+  border: 2px solid rgba(232, 184, 75, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.18), 0 5px 16px rgba(0, 0, 0, 0.48);
+}
+
+.skill-button:active {
+  background: radial-gradient(circle at 40% 30%, rgba(140, 232, 255, 0.5), rgba(35, 24, 14, 0.96) 72%);
 }
