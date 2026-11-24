@@ -1,0 +1,118 @@
+/* 触屏控件样式域：摇杆、技能键簇、自动键与瞄准线。
+ *
+ * 迁移自 src/style.css 与 src/registration/presentation.ts 的 EXTRA_CSS；
+ * T03/S5 令牌化：本文件零裸色值，全部 var(--ws-*)（PRD US-09-2 / 架构 R-4）。
+ *
+ * 两条 safe-area 规则（.touch-controls .joystick / .skill-cluster）在
+ * src/registration/presentation.ts 的 TOUCH_SAFE_AREA_CSS 中另有一份文本副本，
+ * 那是 src/__tests__/mobileTouch.test.ts 的源码文本契约所需（FC-4），此处保持同值。
+ *
+ * FC-3 / FC-4：.touch-controls / .joystick.touch-control / 4×.skill-button.touch-control /
+ *               .touch-control__auto / .joystick__knob 结构不变；
+ *               .touch-control 的 touch-action:none 与 min-*≥44px 由 style.css + base.css 保证，
+ *               本文件不得替换为 pan-y。
+ */
+
+/* —— 触控条容器 —— */
+
+.touch-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 数值与 presentation.ts 的 TOUCH_SAFE_AREA_CSS 文本副本保持一致（18px / 20px），
+   运行时注入的副本在 head 末尾、优先级相同，二者不能出现不同定位。 */
+.touch-controls .joystick {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 18px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+}
+
+.touch-controls .skill-cluster {
+  position: absolute;
+  right: calc(env(safe-area-inset-right, 0px) + 18px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+  max-width: 44%;
+}
+
+/* —— 摇杆 —— */
+
+/* `.joystick` 的主体（position:relative、132px 直径等）保留在 src/style.css，
+   因为 mobileTouch.test.ts 断言 `.joystick { ... width: 132px }` 位于该文件。 */
+
+.joystick__knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--ws-hit-min) + var(--ws-space-4));
+  height: calc(var(--ws-hit-min) + var(--ws-space-4));
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 35% 30%, var(--ws-border-strong), var(--ws-primary) 70%);
+  border: 1px solid var(--ws-border-strong);
+  box-shadow: var(--ws-shadow-md);
+  pointer-events: none;
+}
+
+/* —— 技能键 —— */
+
+.skill-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ws-space-2);
+  pointer-events: auto;
+}
+
+.skill-button {
+  width: calc(var(--ws-hit-min) + var(--ws-space-4));
+  height: calc(var(--ws-hit-min) + var(--ws-space-4));
+  border-radius: 50%;
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text);
+  background: radial-gradient(circle at 40% 30%, var(--ws-border), var(--ws-bg-surface) 72%);
+  border: 2px solid var(--ws-border);
+  box-shadow: var(--ws-btn-inner), var(--ws-btn-shadow);
+  transition:
+    background var(--ws-dur-instant) var(--ws-ease-out),
+    border-color var(--ws-dur-instant) var(--ws-ease-out);
+}
+
+.skill-button:active {
+  background: radial-gradient(circle at 40% 30%, var(--ws-accent), var(--ws-bg-surface) 72%);
+}
+
+/* 闪避键以危险色描边做形状之外的第二重区分（4 套主题均可读）。
+   用结构选择器而非新增 class：appFlow.spec.ts 对 skill-button 的 className 做逐字断言。 */
+.skill-button:not([data-skill]) {
+  border-color: var(--ws-danger);
+}
+
+.skill-button:not([data-skill]):active {
+  background: radial-gradient(circle at 40% 30%, var(--ws-danger), var(--ws-bg-surface) 72%);
+}
+
+/* —— 自动战斗键 —— */
+
+.touch-control__auto {
+  font-size: var(--ws-font-sm);
+  min-width: var(--ws-hit-min);
+  border-radius: var(--ws-radius-pill);
+}
+
+/* —— 技能瞄准线 —— */
+
+.aim-line {
+  position: absolute;
+  height: var(--ws-space-1);
+  background: linear-gradient(90deg, var(--ws-primary), transparent);
+  pointer-events: none;
+}
+
+/* 减少动效：技能键过渡关闭（base.css 有全局兜底）。 */
+@media (prefers-reduced-motion: reduce) {
+  .skill-button {
+    transition: none;
+  }
+}

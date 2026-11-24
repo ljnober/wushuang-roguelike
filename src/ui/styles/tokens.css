@@ -1,0 +1,200 @@
+/**
+ * 《无双》设计令牌层（PRD_UI_REFACTOR.md §6.1 / §6.3）。
+ *
+ * 约定（§6.1）：
+ *   --ws-<类别>-<语义>-<可选变体>
+ *
+ * 本文件是**全工程唯一允许出现裸色值 / 裸尺寸**的位置（US-09-2）。
+ * 其它 CSS 文件一律引用 var(--ws-*)；TS 侧一律不写死颜色。
+ *
+ * :root 默认值 = T1「经典三国」= 现有视觉基线
+ *   金 #e8b84b / 纸白 #f4e7c8 / 朱红 #b3352b / 青 #8ce8ff / 墨 #1a1107
+ * → 保证「不改主题 = 不改现状」（PRD §5.1）。
+ *
+ * 主题覆盖写在 themes.css 的 [data-theme='xxx'] 块中；
+ * 本文件不写任何 [data-theme] 选择器。
+ *
+ * 加载顺序要求：styles/index.css 必须在 style.css **之后**引入，
+ * 使 base.css / components.css 的规则能覆盖 style.css 的历史硬编码值。
+ */
+
+/* ==========================================================================
+   1. 颜色：16 个调色板角色（PRD §5.2）
+   ========================================================================== */
+:root {
+  /* --- 1.1 基础表面 --- */
+  --ws-bg-canvas: #100b07;                    /* 画布底：页面最底层 */
+  --ws-bg-texture: rgba(232, 184, 75, .035);  /* 画布纹理：网格/纹理层 */
+  --ws-bg-surface: #2c2014;                   /* 表面底：面板/卡片底 */
+  --ws-bg-raised: #3c2c1b;                    /* 表面高：悬浮/次级卡片 */
+
+  /* --- 1.2 描边 --- */
+  --ws-border: rgba(232, 184, 75, .62);       /* 边框：常规描边 */
+  --ws-border-strong: #f6dda0;                /* 边框强：强调描边 */
+
+  /* --- 1.3 语义色 --- */
+  --ws-primary: #e8b84b;                      /* 主色：主要动作 */
+  --ws-on-primary: #1a1107;                   /* 主色前景：主色上的文字（墨） */
+  --ws-accent: #8ce8ff;                       /* 强调色：选中/高亮（青） */
+  --ws-text: #f4e7c8;                         /* 文字主：正文（纸白） */
+  --ws-text-muted: rgba(244, 231, 200, .65);  /* 文字次：次要/提示 */
+  --ws-danger: #ff8a80;                       /* 危险/负：错误 */
+  --ws-stat-up: #8ce8ff;                      /* 正向：提升 */
+  --ws-stat-down: #ff8a80;                    /* 负向：下降 */
+
+  /* --- 1.4 槽位与阴影 --- */
+  --ws-slot-empty: rgba(232, 184, 75, .28);   /* 槽位空：空槽描边 */
+  --ws-shadow-color: rgba(0, 0, 0, .72);      /* 阴影：面板投影基色 */
+  --ws-shadow: var(--ws-shadow-color);        /* 阴影角色别名（PRD §5.2 角色名） */
+
+  /* --- 1.5 稀有度色（4 档，色相顺序 白→蓝→金→橙） --- */
+  --ws-rarity-common: #ddd;
+  --ws-rarity-blue: #8dc6ff;
+  --ws-rarity-gold: #f3c744;
+  --ws-rarity-legendary: #ff9d3f;
+
+  /* --- 1.6 主题派生的补充色（PRD 角色表的自然延伸，供 base/components 使用） --- */
+  --ws-color-red: #b3352b;                    /* 朱红：血条低值端 / 警示 */
+  --ws-color-scheme: dark;                    /* 表单控件/滚动条配色方案 */
+
+  /* --- 1.7 画布背景（由变量驱动，主题切换即时生效） --- */
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #241a10 0%, #100b07 56%, #080604 100%);
+  --ws-bg-glow: rgba(150, 104, 48, .22);
+  --ws-bg-grid-size: 72px;
+
+  /* --- 1.8 暗角遮罩（浅色主题需换浅色晕影，故由变量驱动） --- */
+  --ws-vignette-color: rgba(0, 0, 0, .58);
+  --ws-vignette-inner: 42%;
+
+  /* --- 1.9 覆盖层 / 面板 / 按钮 --- */
+  --ws-overlay-backdrop: radial-gradient(ellipse at 50% 44%, rgba(26, 18, 11, .76), rgba(6, 4, 3, .94));
+  --ws-panel-gradient: linear-gradient(160deg, rgba(44, 32, 20, .98), rgba(25, 18, 12, .98));
+  --ws-panel-border: rgba(232, 184, 75, .62);
+  --ws-panel-inner: inset 0 1px 0 rgba(255, 232, 180, .12);
+  --ws-btn-bg: linear-gradient(180deg, #3c2c1b, #24190f);
+  --ws-btn-border: rgba(232, 184, 75, .72);
+  --ws-btn-hover-border: #f4d68a;
+  --ws-btn-inner: inset 0 1px 0 rgba(255, 235, 190, .12);
+  --ws-btn-shadow: 0 4px 14px rgba(0, 0, 0, .35);
+  --ws-btn-primary-bg: linear-gradient(180deg, #e0b253, #a5741f);
+  --ws-btn-primary-border: #f6dda0;
+
+  /* --- 1.10 标题 / 选中 / 骨架 / 错误 / 空态 / 焦点 --- */
+  --ws-title-gradient: linear-gradient(180deg, #ffe9a8, #e8b84b 55%, #9b6c1e);
+  --ws-title-shadow: 0 6px 18px rgba(232, 184, 75, .32);
+  --ws-selected-bg: #1b3340;
+  --ws-skeleton-base: rgba(255, 255, 255, .06);
+  --ws-skeleton-sheen: rgba(255, 255, 255, .12);
+  --ws-error-bg: rgba(255, 138, 128, .12);
+  --ws-error-border: #ff8a80;
+  --ws-empty-icon: rgba(232, 184, 75, .35);
+  --ws-focus-ring: #8ce8ff;
+
+  /* --- 1.11 调试面板 --- */
+  --ws-debug-bg: rgba(0, 0, 0, .8);
+  --ws-debug-text: #7dffb0;
+  --ws-debug-font: 11px/1.5 monospace;
+
+  /* --- 1.12 旧变量别名 ---
+     style.css 遗留的 --ws-ink / --ws-paper / --ws-gold / --ws-red 仍被部分规则引用。
+     这里把它们映射到主题令牌上，使这些遗留引用也随主题变化（不改 style.css 本身）。 */
+  --ws-ink: var(--ws-bg-canvas);
+  --ws-paper: var(--ws-text);
+  --ws-gold: var(--ws-primary);
+  --ws-red: var(--ws-color-red);
+}
+
+/* ==========================================================================
+   2. 间距（4px 基，PRD §6.3）
+   ========================================================================== */
+:root {
+  --ws-space-0: 0;
+  --ws-space-1: 4px;
+  --ws-space-2: 8px;
+  --ws-space-3: 12px;
+  --ws-space-4: 16px;
+  --ws-space-5: 24px;
+  --ws-space-6: 32px;
+  --ws-space-7: 48px;
+}
+
+/* ==========================================================================
+   3. 圆角（PRD §6.3）
+   ========================================================================== */
+:root {
+  --ws-radius-xs: 4px;
+  --ws-radius-sm: 8px;
+  --ws-radius-md: 12px;
+  --ws-radius-lg: 16px;
+  --ws-radius-xl: 22px;
+  --ws-radius-pill: 999px;
+}
+
+/* ==========================================================================
+   4. 阴影（PRD §6.3）
+   ========================================================================== */
+:root {
+  --ws-shadow-sm: 0 2px 6px var(--ws-shadow-color);
+  --ws-shadow-md: 0 8px 24px var(--ws-shadow-color);
+  --ws-shadow-lg: 0 18px 52px var(--ws-shadow-color);
+  --ws-shadow-glow: 0 0 18px 2px var(--ws-rarity-legendary);
+}
+
+/* ==========================================================================
+   5. 字号 / 字重 / 行高（PRD §6.3）
+   ========================================================================== */
+:root {
+  --ws-font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+
+  --ws-font-xs: 10px;
+  --ws-font-sm: 12px;
+  --ws-font-md: 14px;
+  --ws-font-lg: 16px;
+  --ws-font-xl: 20px;
+  --ws-font-2xl: 28px;
+  --ws-font-display: clamp(48px, 8vw, 76px);
+
+  --ws-weight-normal: 400;
+  --ws-weight-bold: 700;
+  --ws-weight-heavy: 800;
+
+  --ws-leading-tight: 1.2;
+  --ws-leading-normal: 1.5;
+}
+
+/* ==========================================================================
+   6. 动效（PRD §6.3）
+   ========================================================================== */
+:root {
+  --ws-dur-instant: 90ms;
+  --ws-dur-fast: 120ms;
+  --ws-dur-base: 180ms;
+  --ws-dur-slow: 260ms;
+
+  --ws-ease-out: cubic-bezier(.22, .61, .36, 1);
+  --ws-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --ws-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* ==========================================================================
+   7. 层级（PRD §6.3 —— 对齐既有 style.css 的 z-index，**不得变动**）
+   ========================================================================== */
+:root {
+  --ws-z-scene: 10;
+  --ws-z-hud: 20;
+  --ws-z-modal: 30;
+  --ws-z-preview: 40;
+  --ws-z-toast: 50;
+  --ws-z-debug: 99;
+}
+
+/* ==========================================================================
+   8. 尺寸（PRD §6.3 —— --ws-hit-min 为冻结契约，不得下调）
+   ========================================================================== */
+:root {
+  --ws-hit-min: 44px;        /* 冻结：最小命中区 */
+  --ws-doll-size: 320px;
+  --ws-slot-size: 44px;
+  --ws-preview-width: 320px;
+  --ws-drawer-max-height: 70vh;
+}

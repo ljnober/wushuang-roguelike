@@ -1,0 +1,106 @@
+/* 局外养成样式域：魔盒 / 宝石 / 排行 / 材料。
+ *
+ * T03/S5 令牌化：本文件零裸色值，全部 var(--ws-*)（PRD US-09-2 / 架构 R-4）。
+ * 可滚容器显式 touch-action:pan-y + overscroll-behavior:contain（PRD §4.2 / US-08-5 / R-3），
+ * 不触碰 body/canvas/.touch-control 的 touch-action:none（FC-4）。
+ *
+ * 归属约定（与 components.css 去重）：
+ *   本文件拥有：.tab-bar .action-row .material-row .cube-slots
+ *               .meta-list .meta-body .gem-row .leaderboard
+ *   .tab / .chip 由 components.css 拥有（通用页签与标签组件）。
+ */
+
+/* —— 通用横向行组 —— */
+
+.tab-bar,
+.action-row,
+.material-row,
+.cube-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  margin: var(--ws-space-2) 0;
+  align-items: center;
+}
+
+.action-row--cube,
+.action-row--install,
+.action-row--modes {
+  border-top: 1px solid var(--ws-border);
+  padding-top: var(--ws-space-2);
+}
+
+/* —— 区域容器：独立纵向滚动，不与页面级 touch-action:none 冲突 —— */
+
+.meta-body {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+/* —— 列表 —— */
+
+.meta-list {
+  max-height: calc(var(--ws-hit-min) * 6);
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: var(--ws-space-1);
+  padding: var(--ws-space-1);
+  border: 1px solid transparent;
+  border-radius: var(--ws-radius-sm);
+}
+
+.meta-list--cube {
+  gap: var(--ws-space-2);
+}
+
+/* 空态：图标（::before）+ 说明（.hint）+ 下一步动作（下方 action-row）。 */
+.meta-list.is-empty,
+.meta-body.is-empty {
+  border-style: dashed;
+  border-color: var(--ws-border);
+  color: var(--ws-text-muted);
+}
+
+.meta-list.is-empty > .hint::before,
+.meta-body.is-empty > .hint::before {
+  content: '◇';
+  color: var(--ws-empty-icon);
+  margin-right: var(--ws-space-2);
+}
+
+.meta-list button {
+  text-align: left;
+  min-height: var(--ws-hit-min);
+  font-size: var(--ws-font-sm);
+}
+
+/* —— 宝石行 —— */
+
+.gem-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+  align-items: center;
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text);
+  padding: var(--ws-space-2) 0;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+/* —— 排行榜 —— */
+
+.leaderboard {
+  font-size: var(--ws-font-md);
+  line-height: var(--ws-leading-normal);
+  padding-left: var(--ws-space-5);
+  color: var(--ws-text);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.leaderboard li {
+  padding: var(--ws-space-1) 0;
+  border-bottom: 1px solid var(--ws-border);
+}

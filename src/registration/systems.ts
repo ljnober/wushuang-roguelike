@@ -271,7 +271,11 @@ export function createBattleSystems(state: SimState): BattleSystemEntry[] {
 
 /** C 的场景层通过 app.state.session 调用的两个会话方法。 */
 export interface BattleSessionControls {
-  startBattle(mode: string, generalId: string): void;
+  /**
+   * 开战。shadowCount 省略时沿用既有默认 2（headless 整局确定性基线依赖此值）；
+   * 真实单机入口显式传 0，保证画面只有一个英雄。
+   */
+  startBattle(mode: string, generalId: string, shadowCount?: number): void;
   endBattle(): void;
 }
 
@@ -324,8 +328,8 @@ export function register(app: App): void {
   registerBattleSystems(app, state);
 
   const controls: BattleSessionControls = {
-    startBattle: (mode: string, generalId: string): void => {
-      const fresh = createBattleState({ generalId });
+    startBattle: (mode: string, generalId: string, shadowCount?: number): void => {
+      const fresh = createBattleState({ generalId, shadowCount });
       const freshSession = battleSession(fresh);
       freshSession.startTick = getSimTick();
       freshSession.running = 1;

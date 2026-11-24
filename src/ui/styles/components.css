@@ -1,0 +1,236 @@
+/**
+ * 《无双》通用组件样式（PRD_UI_REFACTOR.md §6.2.2 components.css / §4.4 四态规范）。
+ *
+ * 覆盖组件：chip / tab / badge / skeleton / empty-state / error-bar / hint
+ *          以及状态类 is-selected / is-active / is-loading / is-empty / is-error / is-disabled。
+ *
+ * 规则（US-09-2）：本文件**不出现裸色值 / 裸尺寸**，一律引用 var(--ws-*)。
+ *
+ * 归属约定（避免与 hud/equipment/meta/cards/touch 的域文件重复定义）：
+ *   本文件拥有：.chip .tab .badge .skeleton .empty-state .error-bar .hint
+ *               .is-selected .is-active .is-loading .is-empty .is-error .is-disabled
+ *               .rarity-common .rarity-blue .rarity-gold .rarity-legendary
+ */
+
+/* ==========================================================================
+   1. chip —— 可筛选/可切换的小圆角标签
+   ========================================================================== */
+.chip,
+.faction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ws-space-1);
+  min-height: var(--ws-space-6);
+  padding: var(--ws-space-1) var(--ws-space-3);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  border-radius: var(--ws-radius-pill);
+  border: 1px solid var(--ws-btn-border);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text);
+  cursor: pointer;
+  transition:
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    background-color var(--ws-dur-fast) var(--ws-ease-out),
+    color var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.chip:hover,
+.faction-chip:hover {
+  border-color: var(--ws-btn-hover-border);
+}
+
+/* ==========================================================================
+   2. tab —— 分区页签
+   ========================================================================== */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ws-space-6);
+  padding: var(--ws-space-1) var(--ws-space-3);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  border-radius: var(--ws-radius-sm);
+  border: 1px solid var(--ws-btn-border);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text);
+  cursor: pointer;
+  transition:
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    background-color var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.tab:hover {
+  border-color: var(--ws-btn-hover-border);
+}
+
+/* ==========================================================================
+   3. badge —— 状态徽标（已装备 / 传奇 / 数量角标）
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ws-space-1);
+  padding: 0 var(--ws-space-2);
+  min-height: var(--ws-space-4);
+  border-radius: var(--ws-radius-pill);
+  border: 1px solid var(--ws-border);
+  background: var(--ws-bg-raised);
+  color: var(--ws-text-muted);
+  font-size: var(--ws-font-xs);
+  font-weight: var(--ws-weight-bold);
+  line-height: var(--ws-leading-tight);
+  white-space: nowrap;
+}
+
+.badge--accent {
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+}
+
+.badge--danger {
+  border-color: var(--ws-danger);
+  color: var(--ws-danger);
+}
+
+/* ==========================================================================
+   4. 稀有度色（全局统一 4 档；随主题微调但保持白→蓝→金→橙色相顺序）
+   ========================================================================== */
+.rarity-common {
+  color: var(--ws-rarity-common);
+}
+
+.rarity-blue {
+  color: var(--ws-rarity-blue);
+}
+
+.rarity-gold {
+  color: var(--ws-rarity-gold);
+}
+
+.rarity-legendary {
+  color: var(--ws-rarity-legendary);
+}
+
+/* ==========================================================================
+   5. skeleton —— 加载态骨架块（浅色脉冲）
+   ========================================================================== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-skeleton-base);
+  min-height: var(--ws-space-4);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--ws-skeleton-sheen), transparent);
+  animation: ws-skeleton-sweep 1.2s var(--ws-ease-in-out) infinite;
+}
+
+@keyframes ws-skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==========================================================================
+   6. empty-state —— 空态：图标 + 一句说明 + 一个明确的下一步动作
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-6) var(--ws-space-4);
+  text-align: center;
+  color: var(--ws-text-muted);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+}
+
+.empty-state__icon {
+  font-size: var(--ws-font-2xl);
+  line-height: 1;
+  color: var(--ws-empty-icon);
+}
+
+.empty-state__text {
+  max-width: 32em;
+}
+
+/* ==========================================================================
+   7. error-bar —— 错误条：红色边框 + 可读错误文案
+   ========================================================================== */
+.error-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  border: 1px solid var(--ws-error-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-error-bg);
+  color: var(--ws-danger);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+}
+
+/* ==========================================================================
+   8. hint —— 次要提示文案
+   ========================================================================== */
+.hint {
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  color: var(--ws-text-muted);
+}
+
+/* ==========================================================================
+   9. 状态类
+   ========================================================================== */
+
+/* 选中：主色描边 + 轻微提亮（配合 aria-selected） */
+.is-selected {
+  border-color: var(--ws-accent);
+  background: var(--ws-selected-bg);
+}
+
+/* 激活（设置项 / 当前页签）：与选中同语义，另加 is-active */
+.is-active {
+  border-color: var(--ws-accent);
+  background: var(--ws-selected-bg);
+  color: var(--ws-text);
+}
+
+.tab.is-active,
+.chip.is-active,
+.faction-chip.is-active {
+  border-color: var(--ws-accent);
+  background: var(--ws-selected-bg);
+}
+
+/* 加载态：内容区替换为骨架块，禁止交互 */
+.is-loading {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* 空态容器 */
+.is-empty {
+  color: var(--ws-text-muted);
+}
+
+/* 错误态容器 */
+.is-error {
+  border-color: var(--ws-error-border);
+}
+
+/* 禁用态：降透明 + 去阴影 + not-allowed（不只靠颜色区分） */
+.is-disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+}

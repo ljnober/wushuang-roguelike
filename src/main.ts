@@ -5,7 +5,10 @@
  * 应用以 headless 模式启动；批次 B/C 侧载的注册文件会被自动执行。
  */
 import { createApp, type App } from './app/App';
+// 加载顺序：style.css（全局骨架 + 冻结契约）先，ui/styles/index.css（分域样式）后，
+// 使后者在同优先级下覆盖前者的历史硬编码值。
 import './style.css';
+import './ui/styles/index.css';
 
 const app: App = createApp();
 

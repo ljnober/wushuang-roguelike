@@ -1,0 +1,202 @@
+/* 《无双》UI 样式唯一入口（PRD_UI_REFACTOR §6.2.2 B-2「样式双源」清理）。
+ *
+ * 由 src/main.ts 引入，顺序在 src/style.css 之后：
+ *   style.css（reset + :root + body/#app + .hud + .overlay + 按钮基类 + .panel + .joystick）
+ *     → 本文件（分域样式，后加载者覆盖前者的同优先级规则）
+ *
+ * 加载顺序（自上而下）：
+ *   1. tokens.css      设计令牌（:root 默认 = 经典三国）
+ *   2. themes.css      主题覆盖块（[data-theme='xxx']）
+ *   3. base.css        reset / body / #app / overlay / panel / 按钮基类 / safe-area
+ *   4. hud.css         战斗 HUD
+ *   5. equipment.css   配装
+ *   6. meta.css        局外养成
+ *   7. cards.css       升级三选一卡牌
+ *   8. touch.css       触屏控件
+ *   9. components.css  通用组件与状态类（**放最后**：让通用状态类覆盖域文件的同名旧值）
+ *
+ * T03/S5：「场景与面板通用层」的裸色值已全部令牌化（零裸色，US-09-2 / R-4）。
+ * 不新增 @import（架构 §5.2 写权矩阵：主题卡样式由 T02 追加到 themes.css）。
+ * FC-3：.scene--* / .boot-title / .boot-enter / .menu-title / .general-card /
+ *       .general-portrait / .general-name / .hint / .result-panel / .result-lines /
+ *       .settings-panel .setting-row / .settings-panel button.primary 的选择器与文案全部保留。
+ */
+
+@import './tokens.css';
+@import './themes.css';
+@import './base.css';
+@import './hud.css';
+@import './equipment.css';
+@import './meta.css';
+@import './cards.css';
+@import './touch.css';
+@import './components.css';
+
+/* ============ 场景与面板通用层（迁移自 EXTRA_CSS，已令牌化） ============ */
+
+/* —— 面板容器与标题 —— */
+
+.panel--wide {
+  width: min(920px, 100%);
+}
+
+.panel__header,
+.panel__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--ws-space-3);
+}
+
+.panel__title {
+  margin: 0 0 var(--ws-space-3);
+  font-size: var(--ws-font-xl);
+  color: var(--ws-primary);
+}
+
+.section-title {
+  display: block;
+  margin: var(--ws-space-2) 0;
+  font-size: var(--ws-font-md);
+  color: var(--ws-primary);
+}
+
+/* —— 场景设置页行组 —— */
+
+.faction-filters,
+.setting-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  margin: var(--ws-space-2) 0;
+  align-items: center;
+}
+
+.setting-label {
+  min-width: calc(var(--ws-hit-min) * 2 + var(--ws-space-2));
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text-muted);
+}
+
+.settings-panel .setting-row {
+  justify-content: flex-start;
+  padding: var(--ws-space-2) 0;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.settings-panel button.primary {
+  margin-top: var(--ws-space-4);
+}
+
+/* —— 选将面板：武将卡片网格（可滚容器，显式 pan-y）—— */
+
+.general-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--ws-space-3);
+  max-height: 56vh;
+  overflow-y: auto;
+  padding: var(--ws-space-1);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.general-card {
+  min-height: calc(var(--ws-hit-min) * 3 + var(--ws-space-3));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ws-space-1);
+  padding: var(--ws-space-2);
+  background: var(--ws-panel-gradient);
+  border-color: var(--ws-border);
+  color: var(--ws-text);
+  transition:
+    transform var(--ws-dur-fast) var(--ws-ease-out),
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    filter var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.general-card:hover {
+  transform: translateY(calc(var(--ws-space-1) * -1));
+  border-color: var(--ws-accent);
+  filter: brightness(1.12);
+}
+
+.general-portrait {
+  width: calc(var(--ws-hit-min) * 2 - var(--ws-space-1));
+  height: calc(var(--ws-hit-min) * 2 - var(--ws-space-1));
+  border-radius: var(--ws-radius-lg);
+  box-shadow: var(--ws-shadow-md);
+}
+
+.general-name {
+  font-size: var(--ws-font-md);
+  font-weight: var(--ws-weight-bold);
+}
+
+.general-title {
+  font-size: var(--ws-font-xs);
+  opacity: 0.65;
+}
+
+/* —— 启动 / 菜单 / 结算标题 —— */
+
+.boot-title,
+.menu-title,
+.result-title {
+  font-size: var(--ws-font-display);
+  letter-spacing: 0.2em;
+  text-align: center;
+  line-height: var(--ws-leading-tight);
+  background: var(--ws-title-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 18px var(--ws-primary));
+}
+
+.boot-sub,
+.menu-sub,
+.result-lines {
+  text-align: center;
+  opacity: 0.8;
+  margin: var(--ws-space-3) 0;
+  letter-spacing: 0.12em;
+  font-size: var(--ws-font-md);
+}
+
+/* 结算面板：标题/分数行已居中，这里只补布局与操作区间距（DOM 结构不动）。 */
+.result-panel {
+  text-align: center;
+}
+
+.result-panel .menu-actions {
+  margin-top: var(--ws-space-5);
+}
+
+.boot-enter,
+.primary {
+  border-color: var(--ws-btn-primary-border);
+  background: var(--ws-btn-primary-bg);
+  color: var(--ws-on-primary);
+  font-weight: var(--ws-weight-heavy);
+  letter-spacing: 0.12em;
+  min-width: calc(var(--ws-hit-min) * 3);
+}
+
+.menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ws-space-3);
+  margin-top: var(--ws-space-5);
+}
+
+/* —— 窄屏降级：武将网格折为三列 —— */
+
+@media (max-width: 640px) {
+  .general-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

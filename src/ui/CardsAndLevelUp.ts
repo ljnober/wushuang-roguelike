@@ -3,6 +3,9 @@
  *
  * 选牌来自配置中的 skills Registry，用确定性 Rng 派生，无 Math.random。
  * DOM 弹窗不进 ECS；选择回调由 presentation 转成命令/状态写入。
+ *
+ * T03/S5 变更（仅表现层）：为标题/行/卡牌补充 BEM 修饰类作为令牌化 CSS 钩子。
+ * pickChoices 数值逻辑、card 结构与全部文案逐字保持（FC-3）。
  */
 import { Rng } from '../core/Rng';
 import type { GameConfig } from '../data/types';
@@ -71,12 +74,13 @@ export class CardsAndLevelUp {
     this.panel.className = 'panel';
 
     this.title = document.createElement('h2');
+    this.title.className = 'panel__title panel__title--levelup';
     this.title.textContent = '升级 · 三选一';
     this.grid = document.createElement('div');
     this.grid.className = 'card-grid';
 
     const row = document.createElement('div');
-    row.className = 'panel__row';
+    row.className = 'panel__row panel__row--levelup';
     this.autoButton = document.createElement('button');
     this.autoButton.type = 'button';
     this.autoButton.textContent = '技能：自动';
@@ -117,7 +121,7 @@ export class CardsAndLevelUp {
     for (let i = 0; i < choices.length; i++) {
       const choice = choices[i];
       const card = document.createElement('button');
-      card.className = 'card';
+      card.className = 'card card--skill';
       card.type = 'button';
       card.dataset.cardId = choice.id;
 

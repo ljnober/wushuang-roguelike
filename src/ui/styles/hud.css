@@ -1,0 +1,156 @@
+/* HUD 样式域：战斗中的数值面板、血条 / 经验条、BOSS 警告与 toast。
+ *
+ * T03/S5 令牌化：本文件零裸色值，全部引用 var(--ws-*)（PRD US-09-2 / 架构 R-4）。
+ * 裸色值仅存在于 tokens.css / themes.css。
+ *
+ * 注意：`.hud` 根规则（含 safe-area 内边距）必须留在 src/style.css，
+ * 因为 src/__tests__/mobileTouch.test.ts 按源码文本断言该片段（FC-4）。
+ * FC-3：.hud[data-hud="battle"] / .hud .hud__value 的选择器与文本格式一概不改。
+ */
+
+/* —— 数值面板 —— */
+
+.hud__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+}
+
+.hud__row--bottom {
+  align-items: flex-end;
+}
+
+.hud__panel {
+  pointer-events: auto;
+  min-width: calc(var(--ws-hit-min) * 3 + var(--ws-space-4));
+  background: var(--ws-panel-gradient);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  line-height: var(--ws-leading-normal);
+  color: var(--ws-text);
+  box-shadow: var(--ws-shadow-md), var(--ws-panel-inner);
+  backdrop-filter: blur(6px);
+}
+
+/* 标签样式：迁移前 font-size:12px + opacity:.75，取值经令牌对应。 */
+.hud__label {
+  font-size: var(--ws-font-sm);
+  letter-spacing: 0.08em;
+  color: var(--ws-primary);
+  opacity: 0.75;
+}
+
+.hud__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ws-weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--ws-text);
+}
+
+/* BEM 修饰类：由 HUD.ts 静态附加，仅换色、不换选择器/文案。 */
+.hud__value--hp { color: var(--ws-text); }
+.hud__value--level { color: var(--ws-accent); }
+.hud__value--time { color: var(--ws-text-muted); }
+.hud__value--kills { color: var(--ws-text); }
+.hud__value--score { color: var(--ws-primary); }
+.hud__value--low { color: var(--ws-danger); font-weight: var(--ws-weight-heavy); }
+
+/* —— 行内条目 —— */
+
+.hud__line {
+  display: flex;
+  gap: var(--ws-space-2);
+  align-items: center;
+}
+
+/* —— 血条 / 经验条 —— */
+
+@keyframes ws-hp-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--ws-danger);
+    filter: brightness(1.9);
+  }
+  100% {
+    box-shadow: 0 0 14px 4px transparent;
+    filter: brightness(1);
+  }
+}
+
+.hud__bar-fill.hud__flash {
+  animation: ws-hp-flash var(--ws-dur-base) var(--ws-ease-out);
+}
+
+.hud__bar {
+  position: relative;
+  width: 100%;
+  height: var(--ws-space-3);
+  border-radius: var(--ws-radius-pill);
+  overflow: hidden;
+  background: var(--ws-slot-empty);
+}
+
+.hud__bar-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--ws-color-red), var(--ws-primary));
+  transition: width var(--ws-dur-instant) linear;
+}
+
+.hud__bar-fill--low {
+  background: linear-gradient(90deg, var(--ws-danger), var(--ws-color-red));
+}
+
+.hud__bar--exp {
+  margin-top: var(--ws-space-1);
+  height: var(--ws-space-2);
+}
+
+.hud__bar-fill--exp {
+  background: linear-gradient(90deg, var(--ws-primary), var(--ws-accent));
+}
+
+/* —— BOSS 警告 —— */
+
+.hud__boss-warn {
+  color: var(--ws-danger);
+  border-color: var(--ws-danger);
+  background: var(--ws-panel-gradient);
+  font-weight: var(--ws-weight-heavy);
+  animation: pulse calc(var(--ws-dur-slow) * 4) var(--ws-ease-in-out) infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.55; }
+}
+
+/* —— Toast 队列 —— */
+
+.hud__toasts {
+  position: absolute;
+  right: var(--ws-space-2);
+  bottom: calc(var(--ws-hit-min) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  align-items: flex-end;
+}
+
+.hud__toast {
+  background: var(--ws-panel-gradient);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  padding: var(--ws-space-1) var(--ws-space-2);
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text);
+  box-shadow: var(--ws-shadow-sm);
+}
+
+/* 减少动效：toast 淡入保留、位移/闪光关闭（base.css 有全局兜底）。 */
+@media (prefers-reduced-motion: reduce) {
+  .hud__bar-fill.hud__flash,
+  .hud__boss-warn {
+    animation: none;
+  }
+}

@@ -11,8 +11,10 @@ import type { GameEventBus } from '../ecs/bridge/GameEventBus';
 import type { CommandBus } from '../ecs/bridge/CommandBus';
 import { getAccumulator, getAlpha, getSimTick, getSystemCounts } from '../ecs/scheduler';
 import type { BattleWorld } from '../ecs/bit/adapter';
-import type { QualityLevel } from '../game/SaveData';
+import type { QualityLevel, SaveData, ThemeId } from '../game/SaveData';
 import { SaveSystem } from '../game/SaveSystem';
+import { ThemeManager } from '../ui/theme/ThemeManager';
+import { ThemePicker, type ThemePickerLike } from '../ui/theme/ThemePicker';
 import { Renderer } from '../engine/Renderer';
 import { PixiPools } from '../engine/PixiPools';
 import { Viewport } from '../engine/Viewport';
@@ -36,42 +38,13 @@ import {
   type SceneDeps,
 } from '../game/scenes';
 
-const EXTRA_CSS = `
-.hud__line{display:flex;gap:6px;align-items:center}.hud__label{opacity:.75;font-size:12px}
-.hud__bar--exp{margin-top:5px;height:6px}.hud__bar-fill--exp{background:linear-gradient(90deg,#49c1ff,#8ce8ff)}
-.hud__boss-warn{color:#ffb4a9;border-color:#ff5b4a;animation:pulse 1s infinite}
-.hud__toasts{position:absolute;right:8px;bottom:92px;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
-.hud__toast{background:rgba(18,13,8,.85);border:1px solid #e8b84b55;border-radius:8px;padding:5px 9px;font-size:12px}
-@keyframes pulse{50%{opacity:.55}}
-.touch-controls{position:absolute;inset:0;pointer-events:none}
+/**
+ * 触控条安全区适配：仅为兼容 mobileTouch.test.ts 的源码文本断言而保留。
+ * 样式主体见 src/ui/styles/touch.css。
+ */
+const TOUCH_SAFE_AREA_CSS = `
 .touch-controls .joystick{position:absolute;left:calc(env(safe-area-inset-left,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
 .touch-controls .skill-cluster{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 20px);max-width:44%}
-.touch-control__auto{font-size:12px;min-width:56px}.aim-line{position:absolute;height:3px;background:linear-gradient(90deg,#e8b84b,#e8b84b00);pointer-events:none}
-.card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
-.card{min-height:132px;display:flex;flex-direction:column;gap:6px;text-align:left;padding:10px;border-color:#e8b84b88}
-.card__level{font-size:11px;color:#e8b84b}.card__name{font-size:16px}.card__desc{font-size:11px;opacity:.8}.card__tags{font-size:10px;opacity:.6}
-.panel--wide{width:min(920px,100%)}.panel__header,.panel__row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.panel__title{margin:0 0 10px;font-size:20px;color:#e8b84b}.section-title{display:block;margin:8px 0;font-size:13px;color:#e8b84b}
-.equip-columns{display:grid;grid-template-columns:minmax(240px,1fr) minmax(240px,1fr);gap:12px}
-.slot-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.slot{min-height:44px;font-size:11px;padding:4px}.inventory-list{display:grid;grid-template-columns:1fr;gap:4px;max-height:230px;overflow-y:auto}
-.inventory-item,.fold-button{text-align:left;min-height:40px;font-size:12px}.is-selected{border-color:#8ce8ff;background:#1b3340}
-.rarity-common{color:#ddd}.rarity-blue{color:#8dc6ff}.rarity-gold{color:#f3c744}.rarity-legendary{color:#ff9d3f}
-.item-detail{margin-top:12px;border-top:1px solid #e8b84b55;padding-top:10px;display:flex;flex-wrap:wrap;gap:8px}
-.detail-title{width:100%;color:#e8b84b}.stat-row{min-width:120px;font-size:12px}.stat-row.up{color:#8ce8ff}.stat-row.down{color:#ff8a80}
-.hint{font-size:12px;opacity:.65}.tab-bar,.action-row,.material-row,.cube-slots,.faction-filters,.setting-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;align-items:center}
-.tab{min-height:36px;font-size:12px}.tab.is-active,.faction-chip.is-active,.chip.is-active{border-color:#8ce8ff;background:#1b3340}
-.chip,.faction-chip{min-height:36px;font-size:12px;padding:4px 10px}.meta-list{max-height:260px;overflow-y:auto;display:grid;gap:4px}
-.meta-list button{text-align:left;min-height:40px;font-size:12px}.gem-row{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px}
-.leaderboard{font-size:13px;line-height:1.8;padding-left:22px}.setting-label{min-width:96px;font-size:12px}
-.general-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;max-height:56vh;overflow-y:auto;padding:4px}
-.general-card{min-height:146px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:linear-gradient(160deg,rgba(58,42,25,.9),rgba(31,22,14,.94));border-color:rgba(232,184,75,.42);transition:transform 120ms ease,border-color 120ms ease,filter 120ms ease}
-.general-card:hover{transform:translateY(-3px);border-color:#8ce8ff;filter:brightness(1.12)}
-.general-portrait{width:82px;height:82px;border-radius:14px;box-shadow:0 5px 16px rgba(0,0,0,.55)}.general-name{font-size:14px;font-weight:700}.general-title{font-size:10px;opacity:.65}
-.boot-title,.menu-title,.result-title{font-size:clamp(48px,8vw,76px);letter-spacing:.2em;text-align:center;line-height:1.15;background:linear-gradient(180deg,#ffe9a8,#e8b84b 55%,#9b6c1e);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 18px rgba(232,184,75,.32))}.boot-sub,.menu-sub,.result-lines{text-align:center;opacity:.8;margin:12px 0;letter-spacing:.12em;font-size:14px}
-.boot-enter,.primary{border-color:#f6dda0;background:linear-gradient(180deg,#e0b253,#a5741f);color:#1a1107;font-weight:800;letter-spacing:.12em;min-width:132px}.menu-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:22px}
-.ws-debug{position:absolute;top:4px;left:4px;z-index:99;background:rgba(0,0,0,.8);color:#7dffb0;font:11px/1.5 monospace;padding:6px 8px;border-radius:6px;pointer-events:none;white-space:pre}
-@media (max-width:640px){.equip-columns{grid-template-columns:1fr}.card-grid{grid-template-columns:1fr}.general-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 `;
 
 interface Runtime {
@@ -107,6 +80,38 @@ export function register(app: App): void {
       ? (document.getElementById('app') ?? document.body)
       : null;
 
+  // 主题：全工程唯一 ThemeManager 单例。必须在场景挂载 / app.start() 之前 apply，
+  // 保证首帧就是存档主题；旧档缺省与非法值由 resolveTheme 回退 classic。
+  const theme = new ThemeManager();
+  theme.apply(save.meta.settings.theme);
+
+  // 同一条错误条由主题写回与配装写回复用，文案统一为「存档失败 + lastError 原文」。
+  const themeError = createThemeErrorBar(host);
+  let themeErrorTimer = 0;
+  const showThemeSaveError = (message: string): void => {
+    if (themeError === null) return;
+    themeError.textContent = `存档失败：${message}`;
+    themeError.hidden = false;
+    if (themeErrorTimer !== 0) window.clearTimeout(themeErrorTimer);
+    themeErrorTimer = window.setTimeout(() => {
+      themeError.hidden = true;
+      themeErrorTimer = 0;
+    }, 4000);
+  };
+
+  // 主题卡组件：只做 apply + onSelect 钩子；存档写回集中在本文件处理。
+  const picker = new ThemePicker({
+    manager: theme,
+    onSelect: (_id: ThemeId): void => {
+      const resolved = theme.apply(_id);
+      save.meta.settings.theme = resolved;
+      if (!saveSystem.save(save)) {
+        const message = saveSystem.lastError;
+        if (message !== null && message.length > 0) showThemeSaveError(message);
+      }
+    },
+  });
+
   const runtime: Runtime = {
     renderer: null,
     pools: null,
@@ -136,10 +141,30 @@ export function register(app: App): void {
   const equipment = host !== null ? new EquipmentUI(host, config) : null;
   const meta = host !== null ? new MetaUI(host, config) : null;
 
+  // 按冻结接口 ThemePickerLike 给配装页注入换肤入口；T01 只依赖接口、不 import 实现类。
+  // 结构性调用使本文件与 EquipmentUI 的并行开发解耦（方法缺失时安全跳过，不影响其它功能）。
+  if (equipment !== null) {
+    // 配装写回唯一出口：T01 的 equip()/unequip() 改完 loadout 后回调本函数，
+    // 与主题写回共用同一 save 引用与既有 SaveSystem.save()（2000ms 节流不变）。
+    equipment.onChange = (updated: SaveData): void => {
+      if (!saveSystem.save(updated)) {
+        const message = saveSystem.lastError;
+        if (message !== null && message.length > 0) showThemeSaveError(message);
+      }
+    };
+
+    const attachable = equipment as unknown as Partial<{
+      attachThemePicker(picker: ThemePickerLike | null): void;
+    }>;
+    if (typeof attachable.attachThemePicker === 'function') {
+      attachable.attachThemePicker.call(equipment, picker);
+    }
+  }
+
   if (host !== null) {
     const style = document.createElement('style');
     style.dataset.wsPresentation = 'true';
-    style.textContent = EXTRA_CSS;
+    style.textContent = TOUCH_SAFE_AREA_CSS;
     document.head.append(style);
     if ('ontouchstart' in window) host.classList.add('ws-mobile');
     window.addEventListener('resize', () => {
@@ -297,10 +322,12 @@ export function register(app: App): void {
       pity: {},
     };
     const session = app.state.session as unknown as {
-      startBattle?: (mode: string, generalId: string) => void;
+      startBattle?: (mode: string, generalId: string, shadowCount?: number) => void;
     } | null;
     if (session !== null && typeof session.startBattle === 'function') {
-      session.startBattle(request.mode, request.generalId);
+      // 单机战役只要 1 个真人英雄；AI 影子会渲染成同款英雄并自动移动，
+      // 造成"多个英雄 / 闪烁"的观感。headless 整局测试仍用默认 2 影子，不受影响。
+      session.startBattle(request.mode, request.generalId, 0);
     }
     // startBattle 会替换命令总线，因此自动/Manual 状态必须在开战后重新下发，
     // 否则默认 auto 存档只在 UI 上显示"自动"，ECS 仍按手动空转。
@@ -315,6 +342,8 @@ export function register(app: App): void {
   const deps: SceneDeps = {
     save,
     saveSystem,
+    theme,
+    themePicker: picker,
     config,
     audio,
     portraits,
@@ -395,6 +424,17 @@ export function register(app: App): void {
 
   registerScenes(app, deps);
   app.sceneManager.switchTo('boot');
+}
+
+/** 存档写入失败时的可见错误条（US-10-2）：文案由 SaveSystem.lastError 提供。 */
+function createThemeErrorBar(host: HTMLElement | null): HTMLElement | null {
+  if (host === null) return null;
+  const bar = document.createElement('div');
+  bar.className = 'theme-picker-error error-bar is-error';
+  bar.setAttribute('role', 'alert');
+  bar.hidden = true;
+  host.append(bar);
+  return bar;
 }
 
 function updateDebugPanel(runtime: Runtime, app: App): void {

@@ -3,6 +3,9 @@
  *
  * 纯 DOM，不进 ECS；数据由 RenderSystems.HUDSystem（10Hz）与 render 回调推送。
  * 只在数值变化时写 DOM，避免每帧布局抖动。
+ *
+ * T03/S5 变更（仅表现层）：为数值元素补充 BEM 修饰类作为令牌化 CSS 的钩子，
+ * 不新增 ECS 读取、不新增墙钟调用、不改任何 FC-3 选择器与文本格式。
  */
 import { GameEventType } from '../ecs/bridge/enums';
 import type { GameEvent } from '../ecs/bridge/GameEventBus';
@@ -65,28 +68,30 @@ export class HUD implements HUDLike {
     const left = el('div', 'hud__panel');
     const hpLine = el('div', 'hud__line');
     hpLine.append(el('span', 'hud__label', '生命 '));
-    this.hpText = el('span', 'hud__value', '120 / 120');
+    this.hpText = el('span', 'hud__value hud__value--hp', '120 / 120');
     hpLine.append(this.hpText);
-    const hpBar = el('div', 'hud__bar');
+    const hpBar = el('div', 'hud__bar hud__bar--hp');
     this.hpFill = el('div', 'hud__bar-fill');
     hpBar.append(this.hpFill);
     const expBar = el('div', 'hud__bar hud__bar--exp');
     this.expFill = el('div', 'hud__bar-fill hud__bar-fill--exp');
     expBar.append(this.expFill);
-    this.levelText = el('span', 'hud__value', 'Lv.1');
+    this.levelText = el('span', 'hud__value hud__value--level', 'Lv.1');
     left.append(hpLine, hpBar, expBar, this.levelText);
 
     const right = el('div', 'hud__panel');
-    this.timeText = el('div', 'hud__value', '00:00');
-    this.killText = el('div', 'hud__value', '击杀 0');
-    this.scoreText = el('div', 'hud__value', '积分 0');
+    this.timeText = el('div', 'hud__value hud__value--time', '00:00');
+    this.killText = el('div', 'hud__value hud__value--kills', '击杀 0');
+    this.scoreText = el('div', 'hud__value hud__value--score', '积分 0');
     right.append(this.timeText, this.killText, this.scoreText);
     top.append(left, right);
 
     const bottom = el('div', 'hud__row hud__row--bottom');
     this.bossBanner = el('div', 'hud__panel hud__boss-warn', '');
     this.bossBanner.style.display = 'none';
+    this.bossBanner.setAttribute('role', 'status');
     this.toastBox = el('div', 'hud__toasts');
+    this.toastBox.setAttribute('aria-live', 'polite');
     bottom.append(this.toastBox, this.bossBanner);
 
     this.root.append(top, bottom);
@@ -137,6 +142,10 @@ export class HUD implements HUDLike {
     const ratio = Math.max(0, Math.min(1, cur / safeMax));
     this.hpFill.style.width = `${(ratio * 100).toFixed(1)}%`;
     this.hpText.textContent = `${Math.ceil(cur)} / ${Math.ceil(max)}`;
+    // 纯视觉低血量提示：只切 BEM 修饰类，不改数值、不给 hud__value 换名。
+    const low = ratio <= 0.3;
+    this.hpFill.classList.toggle('hud__bar-fill--low', low);
+    this.hpText.classList.toggle('hud__value--low', low);
   }
 
   setExp(exp: number, next: number, level: number): void {

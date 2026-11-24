@@ -1,0 +1,310 @@
+/**
+ * 《无双》基础样式层（PRD_UI_REFACTOR.md §6.2.2 base.css）。
+ *
+ * 职责：reset、body / #app 背景、.overlay / .panel、按钮基类、命中区、四态与 safe-area。
+ * T03/S5：补充可滚容器 pan-y / overscroll-behavior:contain 与四态视觉，零裸色值。
+ *
+ * 规则（US-09-2）：本文件**不出现裸色值 / 裸尺寸色**，一律引用 var(--ws-*)。
+ * 裸色只允许存在于 tokens.css / themes.css。
+ *
+ * FC-4：body/canvas/.touch-control 的 touch-action:none 保持不变；
+ *       命中区分组块的 min-* 仍为 var(--ws-hit-min)。
+ */
+
+/* ==========================================================================
+   1. Reset
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--ws-bg-canvas);
+  color: var(--ws-text);
+  font-family: var(--ws-font-family);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  overscroll-behavior: none;
+  color-scheme: var(--ws-color-scheme);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* ==========================================================================
+   2. #app 战场背景（变量驱动 → 主题切换即时生效）
+   ========================================================================== */
+#app {
+  position: relative;
+  isolation: isolate;
+  /* 战场地面：透明 Pixi 画布下透出网格与暖色光晕，避免一整片死黑。 */
+  background:
+    radial-gradient(ellipse 58% 46% at 50% 42%, var(--ws-bg-glow), transparent 72%),
+    repeating-linear-gradient(0deg, var(--ws-bg-texture) 0 1px, transparent 1px var(--ws-bg-grid-size)),
+    repeating-linear-gradient(90deg, var(--ws-bg-texture) 0 1px, transparent 1px var(--ws-bg-grid-size)),
+    var(--ws-bg-canvas-gradient);
+}
+
+/* 暗角遮罩：浅色主题下改为浅色晕影，避免把画面压暗（R-12）。 */
+#app::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    transparent var(--ws-vignette-inner),
+    var(--ws-vignette-color) 100%
+  );
+}
+
+/* ==========================================================================
+   3. HUD 容器（布局骨架；具体皮肤见 hud.css）
+   ========================================================================== */
+.hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + var(--ws-space-2))
+    calc(env(safe-area-inset-right, 0px) + var(--ws-space-2))
+    calc(env(safe-area-inset-bottom, 0px) + var(--ws-space-2))
+    calc(env(safe-area-inset-left, 0px) + var(--ws-space-2));
+}
+
+.hud__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+}
+
+.hud__row--bottom {
+  align-items: flex-end;
+}
+
+/* ==========================================================================
+   4. 命中区（冻结契约：--ws-hit-min = 44px，不得下调）
+   ========================================================================== */
+.hit-target,
+button,
+.hud button,
+.touch-control {
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  touch-action: none;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ==========================================================================
+   5. 按钮基类
+   ========================================================================== */
+button {
+  color: var(--ws-text);
+  background: var(--ws-btn-bg);
+  border: 1px solid var(--ws-btn-border);
+  border-radius: var(--ws-radius-md);
+  font: inherit;
+  font-weight: var(--ws-weight-bold);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: var(--ws-space-2) var(--ws-space-3);
+  box-shadow: var(--ws-btn-inner), var(--ws-btn-shadow);
+  transition:
+    transform var(--ws-dur-instant) var(--ws-ease-out),
+    filter var(--ws-dur-instant) var(--ws-ease-out),
+    border-color var(--ws-dur-instant) var(--ws-ease-out);
+}
+
+button:hover {
+  filter: brightness(1.14);
+  border-color: var(--ws-btn-hover-border);
+}
+
+button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+button.primary {
+  color: var(--ws-on-primary);
+  background: var(--ws-btn-primary-bg);
+  border-color: var(--ws-btn-primary-border);
+  text-shadow: none;
+}
+
+/* 焦点可见：键盘操作必须始终有 ≥2px 高对比轮廓（§4.3） */
+:focus-visible {
+  outline: 2px solid var(--ws-focus-ring);
+  outline-offset: 2px;
+}
+
+/* 禁用态：降透明 + 去阴影 + not-allowed（US-10-3，不只靠颜色区分） */
+button:disabled,
+.is-disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* ==========================================================================
+   6. 可滚容器：显式 pan-y 覆盖 body 的 touch-action:none（R-3 / US-08-5）
+      仅作用于面板与覆盖层；body / canvas / .touch-control 保持 none（FC-4）。
+   ========================================================================== */
+.overlay,
+.panel {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+/* ==========================================================================
+   7. 场景 / 弹窗覆盖层
+   ========================================================================== */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
+  background: var(--ws-overlay-backdrop);
+  pointer-events: auto;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+/* 层级：场景覆盖层 < HUD/触控 < 弹窗面板 < 预览浮层 < toast < 调试面板。 */
+.overlay.scene {
+  z-index: var(--ws-z-scene);
+}
+
+.hud,
+.touch-controls {
+  z-index: var(--ws-z-hud);
+}
+
+.overlay.ws-equipment,
+.overlay.ws-meta,
+.overlay.ws-levelup {
+  z-index: var(--ws-z-modal);
+}
+
+/* ==========================================================================
+   8. 面板
+   ========================================================================== */
+.panel {
+  width: min(620px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--ws-panel-gradient);
+  border: 1px solid var(--ws-panel-border);
+  border-radius: var(--ws-radius-lg);
+  padding: var(--ws-space-5);
+  box-shadow: var(--ws-shadow-lg), var(--ws-panel-inner);
+}
+
+/* ==========================================================================
+   9. 四态视觉（PRD §4.4；components.css 同名类同源，此处提供基础视觉兜底，
+      供 equipment.css 等域文件直接复用，不新造同义类）
+   ========================================================================== */
+
+/* 加载中：内容替换为骨架块、禁止交互（骨架本体见 components.css .skeleton） */
+.is-loading {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* 空：虚线框 + 图标 + 说明 + 下一步动作（动作由各域操作区提供） */
+.is-empty {
+  border: 1px dashed var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  padding: var(--ws-space-4);
+  text-align: center;
+  color: var(--ws-text-muted);
+}
+
+.is-empty > .hint::before {
+  content: '◇';
+  color: var(--ws-empty-icon);
+  margin-right: var(--ws-space-2);
+}
+
+/* 错误：边框条 + 底色 + 可读文案（文案优先复用 SaveSystem.lastError） */
+.is-error {
+  border: 1px solid var(--ws-error-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-error-bg);
+  color: var(--ws-danger);
+  padding: var(--ws-space-2) var(--ws-space-3);
+}
+
+/* 禁用：降透明 + 去阴影 + not-allowed（不只靠颜色区分） */
+.is-disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* ==========================================================================
+   10. 调试面板（层级最高）
+   ========================================================================== */
+.ws-debug {
+  position: absolute;
+  top: var(--ws-space-1);
+  left: var(--ws-space-1);
+  z-index: var(--ws-z-debug);
+  background: var(--ws-debug-bg);
+  color: var(--ws-debug-text);
+  font: var(--ws-debug-font);
+  padding: var(--ws-space-1) var(--ws-space-2);
+  border-radius: var(--ws-radius-xs);
+  pointer-events: none;
+  white-space: pre;
+}
+
+/* ==========================================================================
+   11. 减少动效偏好（§4.3：仅保留透明度淡入）
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,440 @@
+/**
+ * 《无双》主题覆盖层（PRD_UI_REFACTOR.md §5.1 / §5.2 / §5.3）。
+ *
+ * 机制：`document.documentElement.dataset.theme = 'ink'|'neon'|'sakura'`
+ *   → CSS 变量在 `:root[data-theme='xxx']` 下重新定义 → 浏览器一帧内重绘。
+ *   → **不重建 DOM**、不逐元素改样式、不做任何 JS 颜色计算（纯静态替换）。
+ *
+ * 完整性约定（PRD §5.2「缺一不可，缺角色 = 主题不合格」）：
+ *   每个主题块必须完整覆盖下列 16 个调色板角色 + 4 个稀有度色：
+ *     --ws-bg-canvas        --ws-bg-texture       --ws-bg-surface      --ws-bg-raised
+ *     --ws-border           --ws-border-strong    --ws-primary         --ws-on-primary
+ *     --ws-accent           --ws-text             --ws-text-muted      --ws-danger
+ *     --ws-stat-up          --ws-stat-down        --ws-slot-empty      --ws-shadow
+ *   稀有度：--ws-rarity-common / --ws-rarity-blue / --ws-rarity-gold / --ws-rarity-legendary
+ *
+ * 本文件与 tokens.css 是**仅有的两个**允许出现裸色值的文件。
+ *
+ * 注意（R-12 / R-12）：`ink` 与 `sakura` 是**浅底**主题。
+ *   阴影、边框、面板底、暗角遮罩、按钮底一律**重新定义**，不能简单反色；
+ *   正文对比度目标 WCAG AA（≥4.5:1），浅底主题的 --ws-text 必须是深色。
+ */
+
+/* ==========================================================================
+   T2「墨韵水墨」—— 宣纸白底 + 焦墨黑 + 一点朱砂
+   ========================================================================== */
+:root[data-theme='ink'] {
+  /* --- 16 个调色板角色 --- */
+  --ws-bg-canvas: #e8e2d4;
+  --ws-bg-texture: rgba(40, 40, 40, .05);
+  --ws-bg-surface: #f6f1e4;
+  --ws-bg-raised: #fffdf6;
+  --ws-border: rgba(60, 55, 45, .45);
+  --ws-border-strong: #2b2b28;
+  --ws-primary: #2b2b28;
+  --ws-on-primary: #f6f1e4;
+  --ws-accent: #a8321f;
+  --ws-text: #2b2b28;
+  --ws-text-muted: rgba(43, 43, 40, .62);
+  --ws-danger: #a8321f;
+  --ws-stat-up: #2f6b46;
+  --ws-stat-down: #a8321f;
+  --ws-slot-empty: rgba(43, 43, 40, .22);
+  --ws-shadow: rgba(60, 50, 40, .22);
+
+  /* --- 4 档稀有度色 --- */
+  --ws-rarity-common: #8a857a;
+  --ws-rarity-blue: #3f6b9a;
+  --ws-rarity-gold: #9a7b25;
+  --ws-rarity-legendary: #a8321f;
+
+  /* --- 派生令牌（浅底重新定义，不做简单反色） --- */
+  --ws-shadow-color: rgba(60, 50, 40, .22);
+  --ws-color-red: #a8321f;
+  --ws-color-scheme: light;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #f3efe2 0%, #e8e2d4 56%, #dbd4c3 100%);
+  --ws-bg-glow: rgba(168, 50, 31, .10);
+  --ws-bg-grid-size: 72px;
+  --ws-vignette-color: rgba(92, 80, 62, .18);
+  --ws-vignette-inner: 42%;
+  --ws-overlay-backdrop: radial-gradient(ellipse at 50% 44%, rgba(246, 241, 228, .82), rgba(224, 217, 201, .94));
+  --ws-panel-gradient: linear-gradient(160deg, rgba(255, 253, 246, .98), rgba(244, 238, 224, .98));
+  --ws-panel-border: rgba(60, 55, 45, .45);
+  --ws-panel-inner: inset 0 1px 0 rgba(255, 255, 255, .75);
+  --ws-btn-bg: linear-gradient(180deg, #fffdf6, #efe9d8);
+  --ws-btn-border: rgba(60, 55, 45, .45);
+  --ws-btn-hover-border: #2b2b28;
+  --ws-btn-inner: inset 0 1px 0 rgba(255, 255, 255, .8);
+  --ws-btn-shadow: 0 4px 14px rgba(60, 50, 40, .16);
+  --ws-btn-primary-bg: linear-gradient(180deg, #3d3d38, #2b2b28);
+  --ws-btn-primary-border: #2b2b28;
+  --ws-title-gradient: linear-gradient(180deg, #4d4d46, #2b2b28 55%, #1b1b18);
+  --ws-title-shadow: 0 6px 18px rgba(43, 43, 40, .2);
+  --ws-selected-bg: rgba(168, 50, 31, .12);
+  --ws-skeleton-base: rgba(43, 43, 40, .07);
+  --ws-skeleton-sheen: rgba(43, 43, 40, .13);
+  --ws-error-bg: rgba(168, 50, 31, .10);
+  --ws-error-border: #a8321f;
+  --ws-empty-icon: rgba(43, 43, 40, .28);
+  --ws-focus-ring: #a8321f;
+}
+
+/* ==========================================================================
+   T3「暗夜霓虹」—— 深靛底 + 青紫洋红辉光 + 高饱和描边
+   ========================================================================== */
+:root[data-theme='neon'] {
+  /* --- 16 个调色板角色 --- */
+  --ws-bg-canvas: #0a0a14;
+  --ws-bg-texture: rgba(140, 120, 255, .06);
+  --ws-bg-surface: #141428;
+  --ws-bg-raised: #1e1e3a;
+  --ws-border: rgba(140, 120, 255, .55);
+  --ws-border-strong: #7cf7ff;
+  --ws-primary: #7cf7ff;
+  --ws-on-primary: #0a0a14;
+  --ws-accent: #ff5cc8;
+  --ws-text: #e8e8ff;
+  --ws-text-muted: rgba(232, 232, 255, .6);
+  --ws-danger: #ff5c7a;
+  --ws-stat-up: #7cff9b;
+  --ws-stat-down: #ff5c7a;
+  --ws-slot-empty: rgba(140, 120, 255, .25);
+  --ws-shadow: rgba(0, 0, 255, .35);
+
+  /* --- 4 档稀有度色 --- */
+  --ws-rarity-common: #c8c8dd;
+  --ws-rarity-blue: #5cc8ff;
+  --ws-rarity-gold: #ffd24c;
+  --ws-rarity-legendary: #ff8a3d;
+
+  /* --- 派生令牌 --- */
+  --ws-shadow-color: rgba(0, 0, 255, .35);
+  --ws-color-red: #ff2d6f;
+  --ws-color-scheme: dark;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #14143a 0%, #0a0a14 56%, #05050c 100%);
+  --ws-bg-glow: rgba(124, 247, 255, .16);
+  --ws-bg-grid-size: 72px;
+  --ws-vignette-color: rgba(0, 0, 40, .62);
+  --ws-vignette-inner: 42%;
+  --ws-overlay-backdrop: radial-gradient(ellipse at 50% 44%, rgba(20, 20, 48, .8), rgba(4, 4, 10, .95));
+  --ws-panel-gradient: linear-gradient(160deg, rgba(30, 30, 58, .98), rgba(16, 16, 36, .98));
+  --ws-panel-border: rgba(140, 120, 255, .55);
+  --ws-panel-inner: inset 0 1px 0 rgba(124, 247, 255, .14);
+  --ws-btn-bg: linear-gradient(180deg, #26264a, #14142c);
+  --ws-btn-border: rgba(140, 120, 255, .62);
+  --ws-btn-hover-border: #7cf7ff;
+  --ws-btn-inner: inset 0 1px 0 rgba(124, 247, 255, .16);
+  --ws-btn-shadow: 0 4px 16px rgba(0, 0, 40, .55);
+  --ws-btn-primary-bg: linear-gradient(180deg, #7cf7ff, #2fb8d6);
+  --ws-btn-primary-border: #7cf7ff;
+  --ws-title-gradient: linear-gradient(180deg, #b6fbff, #7cf7ff 55%, #ff5cc8);
+  --ws-title-shadow: 0 0 22px rgba(124, 247, 255, .42);
+  --ws-selected-bg: rgba(124, 247, 255, .16);
+  --ws-skeleton-base: rgba(140, 120, 255, .10);
+  --ws-skeleton-sheen: rgba(124, 247, 255, .18);
+  --ws-error-bg: rgba(255, 92, 122, .14);
+  --ws-error-border: #ff5c7a;
+  --ws-empty-icon: rgba(140, 120, 255, .4);
+  --ws-focus-ring: #7cf7ff;
+}
+
+/* ==========================================================================
+   T4「春日和风」—— 樱粉 + 竹青 + 米白 + 淡金
+   ========================================================================== */
+:root[data-theme='sakura'] {
+  /* --- 16 个调色板角色 --- */
+  --ws-bg-canvas: #fdf7f3;
+  --ws-bg-texture: rgba(220, 140, 160, .05);
+  --ws-bg-surface: #ffffff;
+  --ws-bg-raised: #fff7fa;
+  --ws-border: rgba(200, 140, 160, .5);
+  --ws-border-strong: #e08fa8;
+  --ws-primary: #e07b96;
+  --ws-on-primary: #ffffff;
+  --ws-accent: #5aa06f;
+  --ws-text: #3a2f33;
+  --ws-text-muted: rgba(58, 47, 51, .62);
+  --ws-danger: #c2453f;
+  --ws-stat-up: #3f8f5c;
+  --ws-stat-down: #c2453f;
+  --ws-slot-empty: rgba(200, 140, 160, .28);
+  --ws-shadow: rgba(160, 120, 130, .24);
+
+  /* --- 4 档稀有度色 --- */
+  --ws-rarity-common: #b8acae;
+  --ws-rarity-blue: #7fa8d8;
+  --ws-rarity-gold: #e0b04a;
+  --ws-rarity-legendary: #e0653f;
+
+  /* --- 派生令牌（浅底重新定义） --- */
+  --ws-shadow-color: rgba(160, 120, 130, .24);
+  --ws-color-red: #c2453f;
+  --ws-color-scheme: light;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #fffaf7 0%, #fdf7f3 56%, #f6e9ec 100%);
+  --ws-bg-glow: rgba(224, 123, 150, .12);
+  --ws-bg-grid-size: 72px;
+  --ws-vignette-color: rgba(150, 105, 118, .16);
+  --ws-vignette-inner: 42%;
+  --ws-overlay-backdrop: radial-gradient(ellipse at 50% 44%, rgba(255, 250, 247, .84), rgba(240, 226, 230, .94));
+  --ws-panel-gradient: linear-gradient(160deg, rgba(255, 255, 255, .98), rgba(255, 247, 250, .98));
+  --ws-panel-border: rgba(200, 140, 160, .5);
+  --ws-panel-inner: inset 0 1px 0 rgba(255, 255, 255, .8);
+  --ws-btn-bg: linear-gradient(180deg, #ffffff, #fdeef2);
+  --ws-btn-border: rgba(200, 140, 160, .5);
+  --ws-btn-hover-border: #e08fa8;
+  --ws-btn-inner: inset 0 1px 0 rgba(255, 255, 255, .85);
+  --ws-btn-shadow: 0 4px 14px rgba(160, 120, 130, .18);
+  --ws-btn-primary-bg: linear-gradient(180deg, #e895ad, #d4667f);
+  --ws-btn-primary-border: #e08fa8;
+  --ws-title-gradient: linear-gradient(180deg, #ffb6c6, #e07b96 55%, #b9546f);
+  --ws-title-shadow: 0 6px 18px rgba(200, 140, 160, .34);
+  --ws-selected-bg: rgba(90, 160, 111, .14);
+  --ws-skeleton-base: rgba(200, 140, 160, .10);
+  --ws-skeleton-sheen: rgba(224, 123, 150, .16);
+  --ws-error-bg: rgba(194, 69, 63, .10);
+  --ws-error-border: #c2453f;
+  --ws-empty-icon: rgba(200, 140, 160, .35);
+  --ws-focus-ring: #5aa06f;
+}
+
+/* ==========================================================================
+   T02 主题选择卡（ThemePicker）—— 仅追加，以上四套主题变量块保持原样。
+
+   迷你预览块必须显示「该卡自己那套主题」的配色，而主题变量定义在
+   `:root[data-theme='xxx']` 下、只作用于文档根，无法直接作用到卡片子树。
+   因此这里为 `.theme-picker__preview[data-preview-theme='xxx']` 声明一组局部
+   `--ws-*` 覆盖值（取自与本文件 tokens.css 同角色的调色板），预览内部所有
+   颜色仍然只通过 `var(--ws-*)` 读取；切主题依旧零 JS 颜色计算。
+   ========================================================================== */
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ws-space-2);
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.theme-picker__card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ws-space-2);
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  padding: var(--ws-space-2);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-raised);
+  color: var(--ws-text);
+  font-family: var(--ws-font-family);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-tight);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    background-color var(--ws-dur-fast) var(--ws-ease-out),
+    box-shadow var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.theme-picker__card:hover {
+  border-color: var(--ws-border-strong);
+}
+
+.theme-picker__card.is-active {
+  border-color: var(--ws-accent);
+  background: var(--ws-selected-bg);
+  box-shadow: var(--ws-shadow-md);
+}
+
+.theme-picker__card:focus-visible,
+.theme-picker__close:focus-visible {
+  outline: 2px solid var(--ws-focus-ring);
+  outline-offset: 2px;
+}
+
+.theme-picker__name {
+  font-size: var(--ws-font-sm);
+  font-weight: var(--ws-weight-bold);
+  color: var(--ws-text);
+  white-space: nowrap;
+}
+
+/* —— 迷你预览：全部颜色经 var(--ws-*) 读取，作用域值见下方各主题块 —— */
+.theme-picker__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  width: 100%;
+  height: var(--ws-space-7);
+  padding: var(--ws-space-1);
+  overflow: hidden;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-xs);
+  background: var(--ws-bg-canvas-gradient);
+}
+
+.theme-picker__preview-bar {
+  position: relative;
+  flex: 0 0 30%;
+  border-radius: var(--ws-radius-xs);
+  background: var(--ws-primary);
+}
+
+.theme-picker__preview-bar::after {
+  content: '';
+  position: absolute;
+  right: var(--ws-space-1);
+  top: 50%;
+  width: var(--ws-space-2);
+  height: var(--ws-space-2);
+  border-radius: var(--ws-radius-pill);
+  background: var(--ws-accent);
+  transform: translateY(-50%);
+}
+
+.theme-picker__preview-panel {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ws-space-1);
+  padding: 0 var(--ws-space-1);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-xs);
+  background: var(--ws-bg-surface);
+}
+
+.theme-picker__preview-line {
+  height: var(--ws-space-1);
+  width: 55%;
+  border-radius: var(--ws-radius-pill);
+  background: var(--ws-text-muted);
+}
+
+.theme-picker__preview-cta {
+  height: var(--ws-space-2);
+  width: 28%;
+  border-radius: var(--ws-radius-pill);
+  background: var(--ws-accent);
+}
+
+/* 预览局部令牌：与四套主题的调色板角色逐项对应（浅底主题文字为深色，保证可读）。 */
+.theme-picker__preview[data-preview-theme='classic'] {
+  --ws-bg-canvas: #100b07;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #241a10 0%, #100b07 56%, #080604 100%);
+  --ws-bg-surface: #2c2014;
+  --ws-border: rgba(232, 184, 75, .62);
+  --ws-border-strong: #f6dda0;
+  --ws-primary: #e8b84b;
+  --ws-accent: #8ce8ff;
+  --ws-text: #f4e7c8;
+  --ws-text-muted: rgba(244, 231, 200, .65);
+}
+
+.theme-picker__preview[data-preview-theme='ink'] {
+  --ws-bg-canvas: #e8e2d4;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #f3efe2 0%, #e8e2d4 56%, #dbd4c3 100%);
+  --ws-bg-surface: #f6f1e4;
+  --ws-border: rgba(60, 55, 45, .45);
+  --ws-border-strong: #2b2b28;
+  --ws-primary: #2b2b28;
+  --ws-accent: #a8321f;
+  --ws-text: #2b2b28;
+  --ws-text-muted: rgba(43, 43, 40, .62);
+}
+
+.theme-picker__preview[data-preview-theme='neon'] {
+  --ws-bg-canvas: #0a0a14;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #14143a 0%, #0a0a14 56%, #05050c 100%);
+  --ws-bg-surface: #141428;
+  --ws-border: rgba(140, 120, 255, .55);
+  --ws-border-strong: #7cf7ff;
+  --ws-primary: #7cf7ff;
+  --ws-accent: #ff5cc8;
+  --ws-text: #e8e8ff;
+  --ws-text-muted: rgba(232, 232, 255, .6);
+}
+
+.theme-picker__preview[data-preview-theme='sakura'] {
+  --ws-bg-canvas: #fdf7f3;
+  --ws-bg-canvas-gradient: linear-gradient(165deg, #fffaf7 0%, #fdf7f3 56%, #f6e9ec 100%);
+  --ws-bg-surface: #ffffff;
+  --ws-border: rgba(200, 140, 160, .5);
+  --ws-border-strong: #e08fa8;
+  --ws-primary: #e07b96;
+  --ws-accent: #5aa06f;
+  --ws-text: #3a2f33;
+  --ws-text-muted: rgba(58, 47, 51, .62);
+}
+
+/* —— 就地浮层（配装页快捷入口）：不跳场景、不遮挡触发按钮 —— */
+.theme-picker-popover {
+  position: fixed;
+  z-index: var(--ws-z-modal);
+  width: min(var(--ws-preview-width), calc(100vw - var(--ws-space-4)));
+  max-height: var(--ws-drawer-max-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: var(--ws-space-3);
+  border: 1px solid var(--ws-border-strong);
+  border-radius: var(--ws-radius-lg);
+  background: var(--ws-panel-gradient);
+  box-shadow: var(--ws-shadow-lg);
+  color: var(--ws-text);
+}
+
+.theme-picker-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+  margin-bottom: var(--ws-space-2);
+}
+
+.theme-picker__title {
+  font-size: var(--ws-font-md);
+  font-weight: var(--ws-weight-bold);
+  color: var(--ws-text);
+}
+
+.theme-picker__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  padding: 0;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text);
+  font-size: var(--ws-font-xl);
+  line-height: var(--ws-leading-tight);
+  cursor: pointer;
+}
+
+.theme-picker__close:hover {
+  border-color: var(--ws-btn-hover-border);
+}
+
+.theme-picker-popover .theme-picker {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* —— 存档失败错误条（US-10-2）：沿用 SaveSystem.lastError 文案 —— */
+.theme-picker-error {
+  position: fixed;
+  left: 50%;
+  top: var(--ws-space-4);
+  z-index: var(--ws-z-toast);
+  max-width: min(var(--ws-preview-width), calc(100vw - var(--ws-space-4)));
+  transform: translateX(-50%);
+}
+
+.theme-picker-error[hidden] {
+  display: none;
+}

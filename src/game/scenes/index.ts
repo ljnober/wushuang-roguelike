@@ -13,6 +13,8 @@ import type { HUD } from '../../ui/HUD';
 import type { TouchControls } from '../../ui/TouchControls';
 import type { CardsAndLevelUp } from '../../ui/CardsAndLevelUp';
 import type { EquipmentUI } from '../../ui/EquipmentUI';
+import type { ThemeManager } from '../../ui/theme/ThemeManager';
+import type { ThemePicker } from '../../ui/theme/ThemePicker';
 import { MetaUI } from '../../ui/MetaUI';
 import type { GameConfig } from '../../data/types';
 import { GENERAL_DEFS } from '../../data/generals';
@@ -48,6 +50,10 @@ export interface ResultPayload {
 export interface SceneDeps {
   readonly save: SaveData;
   readonly saveSystem: SaveSystem;
+  /** 由 presentation.ts 创建的唯一主题管理器（单例归属见 ARCH §3.5）。 */
+  readonly theme: ThemeManager;
+  /** 与配装页快捷入口共用的同一个主题卡组件实例。 */
+  readonly themePicker: ThemePicker;
   readonly config: GameConfig;
   readonly audio: Audio;
   readonly portraits: PortraitFactory;
@@ -329,6 +335,7 @@ export class ResultScene extends OverlayScene {
 
 export class SettingsScene extends OverlayScene {
   readonly id: SceneId = 'settings';
+  private themeUnsubscribe: (() => void) | null = null;
 
   constructor(private readonly deps: SceneDeps) {
     super();
@@ -339,6 +346,23 @@ export class SettingsScene extends OverlayScene {
     const settings = this.deps.save.meta.settings;
     const content = el('div', 'panel settings-panel');
     content.append(el('h2', 'panel__title', '设置'));
+
+    // 主题区插在「画质」之前；复用 ThemePicker.render() 的同一个根节点，
+    // 设置页不重建主题卡。外部（配装浮层）切主题时同步 is-active / aria-checked。
+    const themeRow = el('div', 'setting-row setting-row--theme');
+    themeRow.append(el('span', 'setting-label', '主题'));
+    const pickerRoot = this.deps.themePicker.render();
+    themeRow.append(pickerRoot);
+    content.append(themeRow);
+    this.themeUnsubscribe = this.deps.theme.subscribe((id) => {
+      const cards = pickerRoot.querySelectorAll<HTMLElement>('.theme-picker__card[data-theme-id]');
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const active = card.dataset.themeId === id;
+        card.classList.toggle('is-active', active);
+        card.setAttribute('aria-checked', active ? 'true' : 'false');
+      }
+    });
 
     const qualityRow = el('div', 'setting-row');
     qualityRow.append(el('span', 'setting-label', '画质（仅渲染）'));
@@ -409,6 +433,14 @@ export class SettingsScene extends OverlayScene {
     this.mount(this.host, content);
   }
 
+  onExit(): void {
+    if (this.themeUnsubscribe !== null) {
+      this.themeUnsubscribe();
+      this.themeUnsubscribe = null;
+    }
+    super.onExit();
+  }
+
   private render(): void {
     const ctx = this.context;
     if (ctx === null) return;
@@ -420,7 +452,7 @@ export class SettingsScene extends OverlayScene {
 /** 战斗场景兜底：B 未注册 battle 时用它，仅负责显示/隐藏 DOM 控件。 */
 /** 战斗会话的渲染侧结构视图；由批次 B 在 app.state.session 上提供。 */
 interface BattleSessionView {
-  startBattle?: (mode: string, generalId: string) => void;
+  startBattle?: (mode: string, generalId: string, shadowCount?: number) => void;
   endBattle?: () => void;
   running?: number;
 }
@@ -449,9 +481,10 @@ export class BattleScene extends OverlayScene {
 
     // SelectScene 已通过 battleLauncher 启动时会置 running=1，此处不重复启动；
     // 直接 switchTo('battle') 的入口则由场景兜底启动，避免模拟处于半开状态。
+    // shadowCount=0：兜底路径同样保持单机只有一个英雄。
     const session = this.session;
     if (session !== null && typeof session.startBattle === 'function' && session.running !== 1) {
-      session.startBattle(this.defaultMode, this.deps.save.meta.selectedGeneral);
+      session.startBattle(this.defaultMode, this.deps.save.meta.selectedGeneral, 0);
     }
   }
 

@@ -117,17 +117,21 @@ function getSharedConfig(): GameConfig {
   return sharedConfig;
 }
 
-/** 把影子数量约束到设计范围 1..3。 */
+/**
+ * 把影子数量约束到设计范围 0..3。
+ * 0 表示纯单机：只有 1 个真人 playerId=0，不再生成 AI 影子英雄。
+ * 非有限值沿用旧默认 1，保持既有调用语义。
+ */
 function clampShadowCount(shadowCount: number): number {
   if (!Number.isFinite(shadowCount)) return 1;
   const n = Math.floor(shadowCount);
-  if (n < 1) return 1;
+  if (n < 0) return 0;
   if (n > MAX_PLAYERS - 1) return MAX_PLAYERS - 1;
   return n;
 }
 
 /**
- * 生成 1 个真人 + shadowCount 个 AI 影子玩家。
+ * 生成 1 个真人 + shadowCount 个 AI 影子玩家（shadowCount=0 时只有 1 个真人）。
  *
  * 所有玩家挂完全一致的组件（Position/Velocity/Heading/Collider/Speed/Health/Faction/
  * Attack/InputCmd/ControlMode/ControlSource/PlayerId/NetId/Owner/SpawnTick/PlayerTag），

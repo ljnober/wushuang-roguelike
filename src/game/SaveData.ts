@@ -8,6 +8,20 @@ import { GENERAL_DEFS } from '../data/generals';
 
 export type QualityLevel = 'low' | 'medium' | 'high';
 
+/**
+ * 界面主题 id（PRD_UI_REFACTOR.md §5.1 / §6.4）。
+ *
+ * T1 classic = 默认主题，与现有视觉基线等价；T5 wasteland 为 P2 预留（尚未实现）。
+ * 主题只影响 DOM UI 层配色，不影响 Pixi 战场实体配色（PRD §3.7）。
+ */
+export type ThemeId = 'classic' | 'ink' | 'neon' | 'sakura';
+
+/** 全部合法主题 id（顺序即设置页展示顺序）。 */
+export const THEME_IDS: readonly ThemeId[] = ['classic', 'ink', 'neon', 'sakura'];
+
+/** 默认主题：旧存档（无 theme 字段）与非法值一律回退到此。 */
+export const DEFAULT_THEME: ThemeId = 'classic';
+
 export interface EquipmentItem {
   uid: string;
   defId: string;
@@ -61,6 +75,8 @@ export interface SaveData {
       netRolePreferred: 'auto' | 'host' | 'client';
       playerColor: number;
       localPlayerName: string;
+      /** 界面主题；缺省或非法值视为 'classic'（旧存档兼容）。 */
+      theme?: ThemeId;
     };
     unlockedModes: string[];
     firstBossClearAt: number | null;
@@ -113,6 +129,7 @@ export function createDefaultSave(): SaveData {
         netRolePreferred: 'auto',
         playerColor: 0,
         localPlayerName: '无名英雄',
+        theme: 'classic',
       },
       unlockedModes: ['campaign_8min'],
       firstBossClearAt: null,

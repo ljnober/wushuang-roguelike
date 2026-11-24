@@ -6,3 +6,8 @@ coverage/
 .DS_Store
 .workbuddy/
 .git-rewrite/
+# Playwright 运行产物（沙箱 safe-delete 拦截，统一豁免以免污染工作区）
+test-results/
+.pw-out-*/
+.pw-r*/
+scripts/_tmp-*

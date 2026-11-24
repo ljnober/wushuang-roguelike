@@ -1,0 +1,86 @@
+/* 升级三选一卡牌样式域。
+ *
+ * T03/S5 令牌化：零裸色值，全部 var(--ws-*)（PRD US-09-2 / 架构 R-4）。
+ * FC-3：.card / .card-grid / .card__name / .card__desc / .card__level / .card__tags
+ *       与 .overlay.ws-levelup 选择器逐字保留；只追加修饰类，不删类、不改名。
+ */
+
+/* —— 卡牌网格 —— */
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ws-space-3);
+  margin: var(--ws-space-4) 0;
+}
+
+/* —— 单张卡牌 —— */
+
+.card {
+  min-height: calc(var(--ws-hit-min) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  text-align: left;
+  padding: var(--ws-space-3);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-panel-gradient);
+  color: var(--ws-text);
+  box-shadow: var(--ws-shadow-sm);
+  transition:
+    transform var(--ws-dur-fast) var(--ws-ease-out),
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    box-shadow var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.card:hover {
+  transform: translateY(calc(var(--ws-space-1) * -1));
+  border-color: var(--ws-accent);
+  box-shadow: var(--ws-shadow-md);
+}
+
+.card__level {
+  font-size: var(--ws-font-sm);
+  font-weight: var(--ws-weight-bold);
+  color: var(--ws-primary);
+}
+
+.card__name {
+  font-size: var(--ws-font-lg);
+  color: var(--ws-text);
+}
+
+.card__desc {
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  color: var(--ws-text-muted);
+}
+
+.card__tags {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+  margin-top: auto;
+}
+
+/* —— 升级弹层标题与操作行（由 CardsAndLevelUp.ts 附加修饰类）—— */
+
+.ws-levelup .panel__title--levelup {
+  margin-bottom: var(--ws-space-2);
+  font-size: var(--ws-font-xl);
+  color: var(--ws-primary);
+  text-align: center;
+}
+
+.ws-levelup .panel__row--levelup {
+  justify-content: center;
+  margin-top: var(--ws-space-4);
+}
+
+/* —— 窄屏降级：三列折叠为单列 —— */
+
+@media (max-width: 640px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}

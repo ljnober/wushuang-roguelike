@@ -1,0 +1,50 @@
+%% 《无双》UI 重构 · 时序图（配套 docs/ARCH_UI_REFACTOR.md §4.3 / §7）
+%% 四条主链路：启动主题 apply / 主题切换写回 / 悬停预览（只读）/ 拖拽换装（含移动长按与取消）
+sequenceDiagram
+    participant U as 玩家
+    participant P as presentation.ts
+    participant T as ThemeManager
+    participant TP as ThemePicker
+    participant E as EquipmentUI
+    participant D as PaperDoll/Drag/Preview
+    participant S as SaveSystem
+
+    Note over P,S: ① 启动（app.start 之前）
+    P->>S: load()
+    S-->>P: save
+    P->>T: new ThemeManager() + apply(save.settings.theme)
+    T->>T: documentElement.dataset.theme = resolved
+    P->>TP: new ThemePicker({manager, onSelect})
+    P->>E: attachThemePicker(picker)
+
+    Note over U,S: ② 主题切换（设置页或配装快捷入口）
+    U->>TP: 点击主题卡[data-theme-id]
+    TP->>T: apply(id)
+    T->>T: 写 data-theme（≤1 帧重绘，DOM 不重建）
+    TP->>P: onSelect(id)
+    P->>S: save.settings.theme = resolved; save(save)
+
+    Note over U,D: ③ 悬停预览 / 移动抽屉（只读）
+    U->>E: hover 仓库条目 / 点击条目
+    E->>D: ItemPreview.show({item, deltas, mode})
+    D-->>U: 浮层（边缘翻转）或底部抽屉
+    U->>D: Esc / 点击外部
+    D->>D: hide()（零存档写入）
+
+    Note over U,S: ④ 拖拽换装（含移动长按）
+    U->>D: pointerdown（setPointerCapture）
+    opt 触屏
+        D->>D: setTimeout(400ms) 启动长按
+    end
+    U->>D: pointermove（>8px 判滚动并取消长按 / 移动幽灵）
+    D->>D: elementFromPoint 找 .doll-slot → 兼容高亮
+    U->>D: pointerup
+    alt 落点为兼容槽
+        D->>E: onEquip(uid, slot)
+        E->>E: equip() 唯一性清理 + loadouts 写入
+        E->>P: onChange(save)
+        P->>S: save(save)
+        E->>D: render() 整体重绘
+    else 落点非槽位
+        D->>D: 取消（clearTimeout + 清高亮，零存档写入）
+    end

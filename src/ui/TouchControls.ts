@@ -4,6 +4,10 @@
  * - 摇杆与每个技能按钮各自 setPointerCapture，支持多指并发；
  * - 技能拖动超过 12px 进入瞄准，松手释放；未拖动则朝最近敌人（aim=0,0）；
  * - 所有命中区 ≥44px、touch-action:none（样式见 style.css）。
+ *
+ * T03/S5 变更（仅表现层）：补充 aria-label 无障碍名称；className 一个字节未改
+ * （appFlow.spec.ts 对 'skill-button touch-control' / 'joystick touch-control' 做逐字断言），
+ * DOM 结构、pointer 行为与 FC-3 全部选择器逐字保持（3 个 data-skill、4 个 .skill-button.touch-control）。
  */
 import { InputButton } from '../ecs/components/view';
 
@@ -58,23 +62,29 @@ export class TouchControls {
     cluster.className = 'skill-cluster';
     for (let i = 0; i < 3; i++) {
       const button = document.createElement('button');
+      // className 必须逐字为 'skill-button touch-control'：
+      // tests/e2e/appFlow.spec.ts 用数组 toContain('skill-button touch-control') 精确断言。
       button.className = 'skill-button touch-control';
       button.type = 'button';
       button.textContent = `技${i + 1}`;
       button.dataset.skill = String(i);
+      button.setAttribute('aria-label', `技能 ${i + 1}`);
       this.skillButtons.push(button);
       cluster.append(button);
     }
     this.dodgeButton = document.createElement('button');
+    // 同上：闪避键也必须与技能键共用逐字相同的 className。
     this.dodgeButton.className = 'skill-button touch-control';
     this.dodgeButton.type = 'button';
     this.dodgeButton.textContent = '闪避';
+    this.dodgeButton.setAttribute('aria-label', '闪避');
     cluster.append(this.dodgeButton);
 
     this.autoButton = document.createElement('button');
     this.autoButton.className = 'touch-control touch-control__auto';
     this.autoButton.type = 'button';
     this.autoButton.textContent = '自动';
+    this.autoButton.setAttribute('aria-label', '自动战斗开关');
     cluster.append(this.autoButton);
 
     this.aimLine = document.createElement('div');
@@ -237,9 +247,21 @@ export class TouchControls {
     this.aimLine.style.display = '';
   }
 
+  /** 方向键归一化为等价 WASD；其余键原样返回（入参已小写）。 */
+  private normalizeKey(key: string): string {
+    if (key === 'arrowleft') return 'a';
+    if (key === 'arrowright') return 'd';
+    if (key === 'arrowup') return 'w';
+    if (key === 'arrowdown') return 's';
+    return key;
+  }
+
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (event.repeat) return;
-    const key = event.key.toLowerCase();
+    const raw = event.key.toLowerCase();
+    const key = this.normalizeKey(raw);
+    // 方向键默认会滚动页面；归一化后统一抑制，WASD 不受影响。
+    if (key !== raw) event.preventDefault();
     this.keys.add(key);
     if (key === 'a' || key === 'd' || key === 'w' || key === 's') this.emitKeyboardMove();
     if (key === 'k') this.toggleAuto();
@@ -254,8 +276,11 @@ export class TouchControls {
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    this.keys.delete(event.key.toLowerCase());
-    if (['a', 'd', 'w', 's'].includes(event.key.toLowerCase())) this.emitKeyboardMove();
+    const raw = event.key.toLowerCase();
+    const key = this.normalizeKey(raw);
+    if (key !== raw) event.preventDefault();
+    this.keys.delete(key);
+    if (['a', 'd', 'w', 's'].includes(key)) this.emitKeyboardMove();
   };
 
   private emitKeyboardMove(): void {

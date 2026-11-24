@@ -1,4 +1,15 @@
-/* 《无双》全局样式：重置 + 画布容器 + HUD 布局 + 移动端安全区 */
+/* 《无双》全局样式：重置 + 画布容器 + HUD 骨架 + 移动端安全区
+ *
+ * 职责边界（PRD_UI_REFACTOR §6.2.2 B-2「样式双源」清理）：
+ *   本文件保留**全局骨架 + 冻结契约**部分，域样式一律在 src/ui/styles/ 下按域拆分。
+ *
+ * ⚠️ 本文件含 src/__tests__/mobileTouch.test.ts 的源码文本断言片段，
+ *    **不得删除、不得改写顺序、不得拆散、不得搬走**：
+ *      ① --ws-hit-min: 44px
+ *      ② 连续四选择器块 .hit-target, button, .hud button, .touch-control { ... }
+ *      ③ .hud { ... env(safe-area-inset-top ...) 与 .overlay { ... env(safe-area-inset- ...) }
+ *    已迁往 src/ui/styles/ 的规则仅限未被断言的部分。
+ */
 
 :root {
   --ws-ink: #120d08;
@@ -78,65 +89,8 @@ canvas {
     calc(env(safe-area-inset-left, 0px) + 8px);
 }
 
-.hud__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.hud__row--bottom {
-  align-items: flex-end;
-}
-
-.hud__panel {
-  pointer-events: auto;
-  min-width: 148px;
-  background: linear-gradient(160deg, rgba(34, 24, 15, 0.9), rgba(14, 10, 7, 0.88));
-  border: 1px solid rgba(232, 184, 75, 0.5);
-  border-radius: 12px;
-  padding: 9px 13px;
-  line-height: 1.4;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 228, 170, 0.1);
-  backdrop-filter: blur(6px);
-}
-
-.hud__label {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: #c9a86a;
-}
-
-.hud__value {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-@keyframes ws-hp-flash {
-  0% { box-shadow: 0 0 0 0 rgba(255, 90, 72, 0.9); filter: brightness(1.9); }
-  100% { box-shadow: 0 0 14px 4px rgba(255, 90, 72, 0); filter: brightness(1); }
-}
-
-.hud__bar-fill.hud__flash {
-  animation: ws-hp-flash 220ms ease-out;
-}
-
-.hud__bar {
-  position: relative;
-  width: 100%;
-  height: 10px;
-  border-radius: 5px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.hud__bar-fill {
-  height: 100%;
-  width: 0;
-  background: linear-gradient(90deg, var(--ws-red), var(--ws-gold));
-  transition: width 90ms linear;
-}
+/* HUD 域样式（数值面板、血条/经验条、BOSS 警告、toast）已迁往
+   src/ui/styles/hud.css；此处仅保留 .hud 容器骨架（safe-area 断言所需）。 */
 
 /* 所有按钮/命中区 ≥44px，多指各自 setPointerCapture */
 .hit-target,
@@ -228,7 +182,9 @@ button.primary {
   box-shadow: 0 26px 80px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 232, 180, 0.12);
 }
 
-/* 摇杆 */
+/* 摇杆主体：mobileTouch.test.ts 断言 `.joystick { ... width: 132px }` 位于本文件，
+   故摇杆主体保留在此；摇杆的屏幕定位规则见 src/ui/styles/touch.css，
+   旋钮 / 技能键 / 技能键簇样式已迁往 src/ui/styles/touch.css。 */
 .joystick {
   position: relative;
   width: 132px;
@@ -239,40 +195,4 @@ button.primary {
   box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.6), 0 6px 20px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
   touch-action: none;
-}
-
-.joystick__knob {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle at 35% 30%, #f5d88f, #b78024 70%);
-  border: 1px solid #f6dda0;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-}
-
-.skill-cluster {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  pointer-events: auto;
-}
-
-.skill-button {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  font-size: 13px;
-  background: radial-gradient(circle at 40% 30%, rgba(232, 184, 75, 0.34), rgba(35, 24, 14, 0.96) 72%);
-  border: 2px solid rgba(232, 184, 75, 0.78);
-  box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.18), 0 5px 16px rgba(0, 0, 0, 0.48);
-}
-
-.skill-button:active {
-  background: radial-gradient(circle at 40% 30%, rgba(140, 232, 255, 0.5), rgba(35, 24, 14, 0.96) 72%);
 }

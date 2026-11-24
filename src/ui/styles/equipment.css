@@ -1,0 +1,746 @@
+/* 配装界面样式域：三栏/两栏/单栏响应式、纸娃娃锚点、仓库、详情、预览浮层、四态。
+ *
+ * 规则（PRD US-09-2）：本文件**不出现裸色值 / 裸尺寸**，一律引用 var(--ws-*)。
+ * 仅 border 的 1px、百分比与媒体查询断点为结构性写法；所有尺寸/间距/圆角/阴影/
+ * 字号/动效均走令牌。稀有度色 .rarity-* 由 components.css 拥有，本文件只消费。
+ *
+ * 归属：本文件拥有 .equip-columns .paper-doll .doll-* .inventory* .equip-detail
+ *       .set-panel .stat-row .item-preview .drag-ghost .doll-theme-toggle
+ */
+
+/* ==========================================================================
+   1. 整体布局：≥1024 三栏 / 720–1023 两栏 / <720 单栏堆叠
+   ========================================================================== */
+
+.equip-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ws-space-4);
+  align-items: start;
+}
+
+.panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+}
+
+.equip-columns > .paper-doll-wrap,
+.equip-columns > .inventory,
+.equip-columns > .equip-detail {
+  min-width: 0;
+}
+
+/* ==========================================================================
+   2. 纸娃娃：静态人形轮廓 + 13 个绝对定位槽位
+   ========================================================================== */
+
+.paper-doll-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+}
+
+.paper-doll {
+  position: relative;
+  width: min(100%, var(--ws-doll-size));
+  /* A-7：冻结锚点中同列 9 槽，纵向需 ≥ 9×44px。高度锁为 2×--ws-doll-size，
+     让百分比间距放大到 ≥44px；宽度仍自适应 min(100%,320px)。 */
+  height: calc(var(--ws-doll-size) * 2);
+  margin-inline: auto;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-lg);
+  background: var(--ws-bg-surface);
+  box-shadow: var(--ws-shadow-md);
+}
+
+/* 槽位场与轮廓共用同一内缩画框：0%/100% 映射为「热区半径」内边界，
+   使 top:2% 的 head 与 top:84% 的 boots 的 44px 热区均完整落在容器内。 */
+.doll-figure-wrap {
+  position: absolute;
+  inset: calc(var(--ws-hit-min) / 2);
+  pointer-events: none;
+}
+
+.doll-figure {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.doll-figure__head,
+.doll-figure__neck,
+.doll-figure__torso,
+.doll-figure__limb,
+.doll-figure__waist,
+.doll-figure__foot {
+  fill: var(--ws-bg-raised);
+  stroke: var(--ws-border-strong);
+}
+
+.doll-figure__head,
+.doll-figure__waist {
+  fill: var(--ws-border);
+}
+
+.doll-slots {
+  position: absolute;
+  inset: calc(var(--ws-hit-min) / 2);
+}
+
+.doll-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: var(--ws-slot-size);
+  height: var(--ws-slot-size);
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-raised);
+  color: var(--ws-text);
+  box-shadow: var(--ws-shadow-sm);
+  transition:
+    box-shadow var(--ws-dur-fast) var(--ws-ease-out),
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    opacity var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.doll-slot__icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.doll-slot__label {
+  display: none;
+  font-size: var(--ws-font-xs);
+  line-height: var(--ws-leading-tight);
+  color: var(--ws-text-muted);
+  pointer-events: none;
+}
+
+.doll-slot.is-empty {
+  border-style: dashed;
+  border-color: var(--ws-slot-empty);
+  background: var(--ws-slot-empty);
+  box-shadow: none;
+}
+
+.doll-slot.is-empty .doll-slot__label {
+  display: block;
+  position: absolute;
+  bottom: calc(var(--ws-space-1) * -1);
+  padding: 0 var(--ws-space-1);
+  background: var(--ws-bg-surface);
+  border-radius: var(--ws-radius-xs);
+  white-space: nowrap;
+}
+
+/* 已装备槽：稀有度三重编码（边框 + 辉光 + 图标角标由图标工厂绘制）。 */
+.doll-slot.rarity-common { border-color: var(--ws-rarity-common); box-shadow: 0 0 var(--ws-space-1) var(--ws-rarity-common); }
+.doll-slot.rarity-blue   { border-color: var(--ws-rarity-blue);   box-shadow: 0 0 var(--ws-space-2) var(--ws-rarity-blue); }
+.doll-slot.rarity-gold   { border-color: var(--ws-rarity-gold);   box-shadow: 0 0 var(--ws-space-2) var(--ws-rarity-gold); }
+.doll-slot.rarity-legendary {
+  border-color: var(--ws-rarity-legendary);
+  box-shadow: var(--ws-shadow-glow);
+}
+
+/* 锚点微调：DOLL_SLOT_ANCHORS 的 13 个百分比数值保持不变，仅用 margin 补偿
+   密集部位热区碰撞（44px 命中区不可缩小，FC-4 / US-08-1）。
+   - bracers：双腕共享单槽，左移到手臂，避开 belt/ring1 的同列碰撞；
+   - amulet：上移 8px，拉开与 shoulders 的 7% 间距；
+   - belt：上移 16px，拉开与 gloves 的 6% 间距；
+   - mainHand/offHand：下移 16px，拉开与 ring2/ring1 的 5% 间距。 */
+.doll-slot[data-slot='bracers'] { margin-left: calc(var(--ws-slot-size) * -1.15); }
+.doll-slot[data-slot='amulet'] { margin-top: calc(var(--ws-space-2) * -1); }
+.doll-slot[data-slot='belt'] { margin-top: calc(var(--ws-space-4) * -1); }
+.doll-slot[data-slot='mainHand'] { margin-top: var(--ws-space-4); }
+.doll-slot[data-slot='offHand'] { margin-top: var(--ws-space-4); }
+
+/* 拖拽落点态。 */
+.doll-slot[data-drop-state='compatible'] {
+  border-color: var(--ws-accent);
+  box-shadow: 0 0 var(--ws-space-3) var(--ws-accent);
+}
+
+.doll-slot[data-drop-state='incompatible'] {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.doll-slot[data-drop-state='hover'] {
+  z-index: 2;
+  border-color: var(--ws-primary);
+  box-shadow: var(--ws-shadow-glow);
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+/* 主题快捷入口。 */
+.doll-theme-toggle {
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+}
+
+/* ==========================================================================
+   3. 仓库：筛选 / 计数 / 条目 / 空态
+   ========================================================================== */
+
+.inventory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+}
+
+.inventory > .section-title { order: 0; }
+.inventory__summary { order: 1; }
+
+/* DOM 中筛选行在列表之后（Tab：槽位 → 仓库条目 → 筛选器 → 详情），视觉置顶。 */
+.inventory-filters {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  padding: var(--ws-space-2);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-surface);
+}
+
+.inventory__filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-1);
+}
+
+.inventory__filter-label {
+  min-width: var(--ws-space-7);
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.inventory-filters .chip {
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+}
+
+.inventory-list {
+  order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  max-height: var(--ws-drawer-max-height);
+  overflow-y: auto;
+  /* 覆盖全局 touch-action:none，保证移动端列表可独立滚动（R-3 / US-08-5）。 */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.inventory__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+}
+
+.inventory-item {
+  display: grid;
+  grid-template-columns: var(--ws-hit-min) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ws-space-2);
+  width: 100%;
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+  padding: var(--ws-space-1);
+  text-align: left;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-bg-raised);
+  color: var(--ws-text);
+  /* 200 件仓库的低成本渲染优化（Q9 / R-9）。 */
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--ws-hit-min);
+  transition:
+    border-color var(--ws-dur-fast) var(--ws-ease-out),
+    transform var(--ws-dur-fast) var(--ws-ease-out);
+}
+
+.inventory-item:hover {
+  border-color: var(--ws-btn-hover-border);
+  transform: translateY(calc(var(--ws-space-1) * -1));
+}
+
+.inventory-item__icon {
+  width: var(--ws-hit-min);
+  height: var(--ws-hit-min);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.inventory-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.inventory-item__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ws-font-sm);
+  font-weight: var(--ws-weight-bold);
+}
+
+.inventory-item__sub {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.inventory-item__status {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-1);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inventory-item__affixes {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+  white-space: nowrap;
+}
+
+.inventory__summary {
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text-muted);
+}
+
+.inventory__capacity {
+  font-size: var(--ws-font-sm);
+}
+
+.inventory__clear {
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+}
+
+.inventory__skeleton {
+  width: 100%;
+  min-height: var(--ws-hit-min);
+}
+
+/* ==========================================================================
+   4. 详情六区块 + 套装面板 + 差值
+   ========================================================================== */
+
+.equip-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-3);
+  padding: var(--ws-space-3);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-lg);
+  background: var(--ws-bg-surface);
+  box-shadow: var(--ws-shadow-md);
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.equip-detail__title {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-3);
+}
+
+.equip-detail__icon {
+  width: var(--ws-space-7);
+  height: var(--ws-space-7);
+  object-fit: contain;
+}
+
+.equip-detail__title-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  min-width: 0;
+}
+
+.equip-detail__name {
+  font-size: var(--ws-font-lg);
+  font-weight: var(--ws-weight-heavy);
+  color: var(--ws-primary);
+}
+
+.equip-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2);
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.equip-detail__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  padding-top: var(--ws-space-2);
+  border-top: 1px solid var(--ws-border);
+}
+
+.equip-detail__block-title {
+  font-size: var(--ws-font-sm);
+  font-weight: var(--ws-weight-bold);
+  color: var(--ws-accent);
+}
+
+.equip-detail__block-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+}
+
+.equip-detail__line {
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  color: var(--ws-text);
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ws-space-2);
+  min-height: var(--ws-space-5);
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+}
+
+.stat-row[data-tone='up'] { color: var(--ws-stat-up); }
+.stat-row[data-tone='down'] { color: var(--ws-stat-down); }
+.stat-row[data-tone='flat'] { color: var(--ws-text-muted); }
+.stat-row[data-value='zero'] { font-weight: var(--ws-weight-bold); }
+
+.equip-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  padding-top: var(--ws-space-2);
+}
+
+.equip-detail__action {
+  flex: 1 1 var(--ws-space-7);
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+}
+
+/* 套装进度 */
+.set-panel__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ws-space-1);
+  padding: var(--ws-space-1) 0;
+}
+
+.set-panel__name {
+  font-size: var(--ws-font-sm);
+  font-weight: var(--ws-weight-bold);
+}
+
+.set-panel__count {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.set-panel__bar {
+  grid-column: 1 / -1;
+  min-height: var(--ws-space-1);
+  border-radius: var(--ws-radius-pill);
+  background: var(--ws-bg-raised);
+  overflow: hidden;
+}
+
+.set-panel__bar-fill {
+  min-height: var(--ws-space-1);
+  background: var(--ws-primary);
+  border-radius: var(--ws-radius-pill);
+  transition: width var(--ws-dur-base) var(--ws-ease-out);
+}
+
+.set-panel__effect,
+.set-panel__hint {
+  grid-column: 1 / -1;
+  font-size: var(--ws-font-xs);
+  line-height: var(--ws-leading-normal);
+}
+
+.set-panel__effect { color: var(--ws-stat-up); }
+.set-panel__hint { color: var(--ws-text-muted); }
+
+/* ==========================================================================
+   5. 预览浮层（hover）与底部抽屉（drawer）
+   ========================================================================== */
+
+.item-preview--hover {
+  position: fixed;
+  z-index: var(--ws-z-preview);
+  width: var(--ws-preview-width);
+  max-height: var(--ws-drawer-max-height);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.item-preview__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  max-height: var(--ws-drawer-max-height);
+  overflow-y: auto;
+  padding: var(--ws-space-3);
+  border: 1px solid var(--ws-border-strong);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-raised);
+  box-shadow: var(--ws-shadow-lg);
+}
+
+.item-preview__header {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-3);
+}
+
+.item-preview__icon {
+  width: var(--ws-space-7);
+  height: var(--ws-space-7);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.item-preview__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  min-width: 0;
+}
+
+.item-preview__name {
+  font-size: var(--ws-font-lg);
+  font-weight: var(--ws-weight-heavy);
+  color: var(--ws-primary);
+}
+
+.item-preview__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2);
+}
+
+.item-preview__slot,
+.item-preview__occupied {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.item-preview__occupied {
+  padding: var(--ws-space-1) var(--ws-space-2);
+  border-radius: var(--ws-radius-xs);
+  background: var(--ws-selected-bg);
+}
+
+.item-preview__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+  padding-top: var(--ws-space-2);
+  border-top: 1px solid var(--ws-border);
+}
+
+.item-preview__section-title {
+  font-size: var(--ws-font-xs);
+  font-weight: var(--ws-weight-bold);
+  color: var(--ws-accent);
+}
+
+.item-preview__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+}
+
+.item-preview__line {
+  font-size: var(--ws-font-sm);
+  line-height: var(--ws-leading-normal);
+  color: var(--ws-text);
+}
+
+.item-preview__line--muted { color: var(--ws-text-muted); }
+.item-preview__line--strong { font-weight: var(--ws-weight-bold); }
+.item-preview__delta { font-size: var(--ws-font-sm); }
+
+.item-preview--drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ws-z-modal);
+  pointer-events: none;
+}
+
+.item-preview__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--ws-vignette-color);
+  pointer-events: auto;
+}
+
+.item-preview__sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  max-height: var(--ws-drawer-max-height);
+  padding: var(--ws-space-3);
+  padding-bottom: calc(var(--ws-space-3) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  border-top: 1px solid var(--ws-border-strong);
+  border-radius: var(--ws-radius-lg) var(--ws-radius-lg) 0 0;
+  background: var(--ws-bg-surface);
+  box-shadow: var(--ws-shadow-lg);
+  pointer-events: auto;
+}
+
+.item-preview__close {
+  align-self: flex-end;
+  min-width: var(--ws-hit-min);
+  min-height: var(--ws-hit-min);
+}
+
+.item-preview__equip {
+  width: 100%;
+  min-height: var(--ws-hit-min);
+  border-color: var(--ws-btn-primary-border);
+  background: var(--ws-btn-primary-bg);
+  color: var(--ws-on-primary);
+  font-weight: var(--ws-weight-heavy);
+}
+
+/* ==========================================================================
+   6. 拖拽镜像
+   ========================================================================== */
+
+.drag-ghost {
+  position: fixed;
+  z-index: var(--ws-z-toast);
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-1) var(--ws-space-2);
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--ws-accent);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-raised);
+  box-shadow: var(--ws-shadow-lg);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.drag-ghost__icon {
+  width: var(--ws-hit-min);
+  height: var(--ws-hit-min);
+  object-fit: contain;
+}
+
+.drag-ghost__label {
+  font-size: var(--ws-font-sm);
+  color: var(--ws-text);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   7. 焦点 / 禁用 / 动效偏好
+   ========================================================================== */
+
+.equip-columns :focus-visible,
+.item-preview :focus-visible {
+  outline: var(--ws-space-1) solid var(--ws-focus-ring);
+  outline-offset: var(--ws-space-1);
+}
+
+.equip-columns .is-disabled,
+.item-preview .is-disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .doll-slot,
+  .inventory-item,
+  .set-panel__bar-fill,
+  .item-preview__card,
+  .drag-ghost {
+    transition: none;
+    animation: none;
+  }
+
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   8. 响应式断点
+   ========================================================================== */
+
+/* 平板：纸娃娃 + 仓库（左） / 详情（右） */
+@media (min-width: 720px) and (max-width: 1023px) {
+  .equip-columns {
+    grid-template-columns: minmax(0, 1fr) var(--ws-doll-size);
+  }
+
+  .equip-columns > .paper-doll-wrap { grid-column: 1; grid-row: 1; }
+  .equip-columns > .inventory { grid-column: 1; grid-row: 2; }
+  .equip-columns > .equip-detail { grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* 桌面：纸娃娃 | 仓库 | 详情 三栏 */
+@media (min-width: 1024px) {
+  .equip-columns {
+    grid-template-columns: var(--ws-doll-size) minmax(0, 1fr) var(--ws-doll-size);
+  }
+
+  .equip-columns > .paper-doll-wrap,
+  .equip-columns > .inventory,
+  .equip-columns > .equip-detail {
+    grid-row: 1;
+  }
+}
+
+/* 移动：单栏纵向堆叠；纸娃娃宽度 min(100%,320px)；详情置底可滚动 */
+@media (max-width: 719px) {
+  .equip-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .paper-doll {
+    width: min(100%, var(--ws-doll-size));
+  }
+
+  .equip-detail {
+    position: sticky;
+    bottom: 0;
+    max-height: var(--ws-drawer-max-height);
+    overflow-y: auto;
+  }
+}

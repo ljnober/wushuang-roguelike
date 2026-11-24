@@ -3,6 +3,9 @@
  *
  * 卡奈魔盒三功能（提取/重铸/升级）、传说宝石升级（成功率+保底）、本地 Top10 排行。
  * 结果随机性来自确定性 Rng（种子由物品 uid 与本地操作序号派生），无 Math.random。
+ *
+ * T03/S5 变更（仅表现层）：为可滚列表、空态容器与行组补充语义/状态类作为令牌化 CSS 钩子。
+ * 所有业务方法（pay/rngFor/extract/reroll/upgradeGem 等）与 FC-3 选择器零改动。
  */
 import { hash32, Rng } from '../core/Rng';
 import type { GameConfig } from '../data/types';
@@ -288,7 +291,7 @@ export class MetaUI {
     body.append(slots);
 
     const list = document.createElement('div');
-    list.className = 'meta-list';
+    list.className = 'meta-list meta-list--cube';
     const items = this.save.meta.warehouse.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -307,10 +310,14 @@ export class MetaUI {
       });
       list.append(row);
     }
+    if (items.length === 0) {
+      list.classList.add('is-empty');
+      list.append(txt('暂无装备：战斗掉落会在结算后入库', 'hint'));
+    }
     body.append(list);
 
     const actions = document.createElement('div');
-    actions.className = 'action-row';
+    actions.className = 'action-row action-row--cube';
     const extract = btn('提取特效');
     extract.addEventListener('click', () => this.extract());
     const reroll = btn('重铸词缀');
@@ -323,7 +330,7 @@ export class MetaUI {
     body.append(actions);
 
     const install = document.createElement('div');
-    install.className = 'action-row';
+    install.className = 'action-row action-row--install';
     for (let i = 0; i < LEGENDARY_EFFECT_DEFS.length; i++) {
       const effect = LEGENDARY_EFFECT_DEFS[i];
       if (this.save.meta.cube.extracted.indexOf(effect.id) < 0) continue;
@@ -341,9 +348,12 @@ export class MetaUI {
   private renderGems(body: HTMLElement): void {
     if (this.save === null) return;
     const list = document.createElement('div');
-    list.className = 'meta-list';
+    list.className = 'meta-list meta-list--gems';
     const gems = this.save.meta.legendaryGems.inventory;
-    if (gems.length === 0) list.append(txt('暂无传说宝石', 'hint'));
+    if (gems.length === 0) {
+      list.classList.add('is-empty');
+      list.append(txt('暂无传说宝石', 'hint'));
+    }
     for (let i = 0; i < gems.length; i++) {
       const gem = gems[i];
       const def = this.config.legendaryGems.tryGet(gem.defId);
@@ -363,7 +373,7 @@ export class MetaUI {
   private renderLeaderboard(body: HTMLElement): void {
     if (this.save === null) return;
     const nav = document.createElement('div');
-    nav.className = 'action-row';
+    nav.className = 'action-row action-row--modes';
     const modes = this.config.modes.all();
     for (let i = 0; i < modes.length; i++) {
       const mode = modes[i];
@@ -385,7 +395,10 @@ export class MetaUI {
       row.textContent = `${entry.score} · ${entry.generalId} · ${new Date(entry.at).toLocaleString()}`;
       list.append(row);
     }
-    if (entries.length === 0) body.append(txt('暂无记录', 'hint'));
+    if (entries.length === 0) {
+      body.classList.add('is-empty');
+      body.append(txt('暂无记录', 'hint'));
+    }
     body.append(list);
   }
 

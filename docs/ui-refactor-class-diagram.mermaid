@@ -1,0 +1,89 @@
+%% 《无双》UI 重构 · 类图（配套 docs/ARCH_UI_REFACTOR.md §4.2 / §7）
+%% 说明：UI 层零 ECS 直连；所有数据经 SaveData / GameConfig / EquipmentIconFactory。
+classDiagram
+    class SaveData {
+        +version: 1
+        +meta: Meta
+    }
+    class Meta {
+        +settings: Settings
+        +loadouts: Record~string,Record~string,string|null~~
+        +warehouse: Warehouse
+    }
+    class Settings {
+        +quality: QualityLevel
+        +controlMode: string
+        +theme?: ThemeId
+    }
+    class EquipmentItem {
+        +uid: string
+        +defId: string
+        +affixes: number[]
+        +gems: string[]
+    }
+    class ThemeManager {
+        -theme: ThemeId
+        -listeners: ThemeListener[]
+        +current: ThemeId
+        +apply(theme: unknown) ThemeId
+        +subscribe(l: ThemeListener) function
+    }
+    class ThemePicker {
+        -manager: ThemeManager
+        -onSelect: function
+        +render() HTMLElement
+        +openAsPopover(anchor: HTMLElement) void
+        +close() void
+    }
+    class ThemePickerLike {
+        <<interface>>
+        +openAsPopover(anchor: HTMLElement) void
+        +close() void
+        +visible: boolean
+    }
+    class EquipmentUI {
+        +onChange: function
+        +open(save, generalId) void
+        +close() void
+        +equip(item, slotId) void
+        +unequip(slotId) void
+        +attachThemePicker(picker: ThemePickerLike) void
+        -statsOf(item) Map
+    }
+    class PaperDoll {
+        +root: HTMLElement
+        +render(vm: DollSlotVM[]) void
+        +setDropState(slotId, state) void
+    }
+    class ItemPreview {
+        +visible: boolean
+        +show(req: PreviewRequest) void
+        +hide() void
+    }
+    class DragEquipController {
+        +active: boolean
+        +attach() void
+        +detach() void
+    }
+    class EquipmentIconFactory {
+        +dataUrlFor(slot, rarity) string
+        +placeholderDataUrlFor(slot) string
+    }
+    class SceneDeps {
+        +save: SaveData
+        +theme: ThemeManager
+        +equipment: EquipmentUI
+    }
+
+    SaveData "1" *-- "1" Meta
+    Meta "1" *-- "1" Settings
+    Meta "1" *-- "*" EquipmentItem : warehouse
+    ThemePicker "1" o-- "1" ThemeManager : 使用
+    ThemePicker ..|> ThemePickerLike : 实现
+    EquipmentUI "1" o-- "1" ThemePickerLike : 注入（依赖倒置）
+    EquipmentUI "1" *-- "1" PaperDoll
+    EquipmentUI "1" *-- "1" ItemPreview
+    EquipmentUI "1" *-- "1" DragEquipController
+    EquipmentUI "1" o-- "1" EquipmentIconFactory
+    SceneDeps "1" o-- "1" ThemeManager
+    SceneDeps "1" o-- "1" EquipmentUI
