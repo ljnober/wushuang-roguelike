@@ -1,0 +1,76 @@
+%% ============ Flow 1: Node 确定性整局（28800 tick）============
+sequenceDiagram
+    participant T as fullrunDeterminism.test.ts
+    participant R as FullRunRunner
+    participant S as scheduler
+    participant A as App(stub)
+    participant W as BattleWorld/Systems
+    participant B as GameEventBus
+    participant ET as EventTally
+
+    T->>R: runFullRun({mode:'campaign_8min', generalId:'liubei', auto:true})
+    R->>S: resetScheduler()
+    R->>A: register(app) via createHeadlessApp()
+    A->>S: registerSimSystem(order 1..17,19)
+    R->>A: state.session.startBattle('campaign_8min','liubei')
+    A->>W: createBattleState() 重建世界/控制源/效果运行时
+    W-->>A: session{startTick, running=1, result=0}
+    R->>R: enableAuto(state) → commands.push(AutoToggle a=1)
+    loop i = 1 .. 28980，每 60 tick drain
+        R->>S: stepTick(state, getSimTick()+1)
+        S->>W: 按 order 执行 18 个系统
+        W->>B: emit(Damage/Kill/Pickup/LevelUp/BossWarn/BossPhase/Victory...)
+        alt i % 60 === 0
+            R->>ET: drainAndTally(bus, out, tally)
+            ET->>B: drain(out)
+            B-->>ET: n 条事件
+            ET->>ET: tally[type]++，累计 droppedCount
+        end
+        R->>R: snapshot(state) 采样
+        alt session.result !== 0
+            R->>R: break（提前结算）
+        end
+    end
+    R->>ET: drainAndTally 尾批
+    R-->>T: FullRunResult{sample, thrown, events}
+    T->>T: 断言 result=1 / tick=28210 / bossSpawned=1 / Victory=1 / dropped=0 / 事件计数精确
+
+%% ============ Flow 2: 浏览器内合成时间快进整局 ============
+sequenceDiagram
+    participant T as fullrun.spec.ts
+    participant P as Page(Chromium)
+    participant H as AppHook
+    participant M as /src/app/App.ts 模块
+    participant F as FastForwardDriver
+    participant A as 运行中的 App 实例
+    participant SC as scheduler
+    participant R as RenderSystems
+    participant D as DOM/HUD/ResultScene
+    participant HP as HudProbe
+
+    T->>P: goto(dev server 5173) → Boot→Menu→Select→Battle
+    T->>H: hookApp(page)
+    H->>P: evaluate: performance.getEntriesByType('resource') 找 App.ts URL
+    P-->>H: appUrl
+    H->>M: await import(/* @vite-ignore */ appUrl)
+    H->>M: patch App.prototype.frameStep = function(t){ window.__fullRunApp = this; orig.call(this,t) }
+    H->>P: waitForApp() 轮询直到 __fullRunApp 出现（≤5s）
+    T->>H: freezeApp(page)
+    H->>A: stop() 取消 RAF；记录 lastTime 为合成时间起点
+    loop milestones = [60,180,300,420,470,481]
+        T->>F: fastForwardTo(page, targetSec)
+        loop 每秒一步，直到 elapsed≥target 或 result≠0，单次≤150 步
+            F->>P: evaluate: window.__fullRunTime += 1000
+            F->>A: frameStep(__fullRunTime)
+            A->>SC: simulateTick(state, 1.0) → 60 个 stepTick
+            SC->>SC: 18 系统执行（BOSS 420s 登场，事件入 bus）
+            A->>R: renderFrame(state, alpha)
+            R->>R: HUDSystem drain 事件 → hudBridge.onEvent
+            A->>D: manager.frame(dt) 更新 DOM；Victory/Defeat 切 result 场景
+        end
+        F-->>T: FastForwardSample（elapsed/result/kills/HUD 同步）
+    end
+    T->>HP: readHud() / readResultPanel()
+    HP->>D: 只读 DOM 文本
+    D-->>HP: HUD 与结算面板数据
+    T->>T: 断言 result≠0 / bossSpawned=1 / 面板 score == HUD score / 零 console.error

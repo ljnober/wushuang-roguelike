@@ -1,0 +1,46 @@
+name: Full-run Playability Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: fullrun-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-fullrun:
+    name: Node 确定性整局（28800 tick）
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run typecheck
+      - name: 整局确定性模拟
+        run: npx vitest run src/__tests__/fullrunDeterminism.test.ts --reporter=verbose
+
+  browser-fullrun:
+    name: 浏览器快进整局 E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Playwright 整局快进（webServer 自动拉起 vite dev）
+        run: npx playwright test --project=fullrun --reporter=line
+        env:
+          E2E_BASE_URL: http://127.0.0.1:5173/
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fullrun-trace
+          path: test-results/

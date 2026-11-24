@@ -9,6 +9,8 @@
     "build": "vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:fullrun": "vitest run src/__tests__/fullrunDeterminism.test.ts",
+    "test:e2e:fullrun": "playwright test --project=fullrun --reporter=line",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "dev:lan": "vite --host 0.0.0.0",

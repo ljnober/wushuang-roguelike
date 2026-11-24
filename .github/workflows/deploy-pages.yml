@@ -31,6 +31,8 @@ jobs:
         run: npm run typecheck
       - name: Test
         run: npm test
+      - name: Full-run determinism (28800 ticks)
+        run: npx vitest run src/__tests__/fullrunDeterminism.test.ts --reporter=verbose
       - name: Build
         run: npm run build
       - name: Configure Pages

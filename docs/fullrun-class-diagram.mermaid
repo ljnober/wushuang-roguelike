@@ -1,0 +1,143 @@
+classDiagram
+    class FullRunOptions {
+        +mode: string = "campaign_8min"
+        +generalId: string = "liubei"
+        +auto: boolean = true
+        +maxTicks: number = 28980
+        +drainEveryTicks: number = 60
+        +onSample?: (s: FullRunSample) => void
+    }
+    class FullRunSample {
+        +tick: number
+        +elapsed: number
+        +result: number
+        +kills: number
+        +level: number
+        +score: number
+        +bossSpawned: number
+        +waveIndex: number
+        +enemies: number
+        +dropped: number
+    }
+    class FullRunResult {
+        +thrown: string | null
+        +events: Readonly~Record~string, number~~
+        +sample: FullRunSample
+    }
+    class FullRunRunner {
+        +createHeadlessApp(): App
+        +runFullRun(opts?: FullRunOptions): FullRunResult
+        +enableAuto(state: SimState): void
+        +snapshot(state: SimState): FullRunSample
+    }
+    class EventTally {
+        +createEventBuffer(size?: number): GameEvent[]
+        +drainAndTally(bus: GameEventBus, out: GameEvent[], tally: Record~string, number~): number
+        +eventName(type: number): string
+    }
+    class AppHookResult {
+        +ok: boolean
+        +appUrl?: string
+        +urls?: string[]
+    }
+    class AppHook {
+        +hookApp(page: Page): Promise~AppHookResult~
+        +waitForApp(page: Page, timeoutMs?: number): Promise~void~
+        +freezeApp(page: Page): Promise~FrozenState~
+    }
+    class FrozenState {
+        +lastTime: number
+        +tick: number
+        +result: number
+    }
+    class FastForwardOptions {
+        +stepMs: number = 1000
+        +maxStepsPerCall: number = 150
+        +timeoutMs: number = 120000
+    }
+    class FastForwardSample {
+        +wallMs: number
+        +steps: number
+        +elapsed: number
+        +result: number
+        +kills: number
+        +level: number
+        +score: number
+        +bossSpawned: number
+        +tick: number
+    }
+    class FastForwardDriver {
+        +fastForwardTo(page: Page, targetSec: number, opts?: FastForwardOptions): Promise~FastForwardSample~
+        +fastForwardThrough(page: Page, milestones: readonly number[], opts?: FastForwardOptions): Promise~FastForwardSample[]~
+    }
+    class HudSnapshot {
+        +hp: string
+        +time: string
+        +kills: number
+        +score: number
+        +level: number
+        +expWidth: string
+    }
+    class HudProbe {
+        +readHud(page: Page): Promise~HudSnapshot~
+        +readResultPanel(page: Page): Promise~ResultPanel~
+    }
+    class ResultPanel {
+        +visible: boolean
+        +text: string
+        +score: number
+        +kills: number
+        +level: number
+        +elapsed: number
+    }
+    class FullRunSpec {
+        +node整局确定性断言()
+        +browser整局快进断言()
+        +结算面板契约断言()
+    }
+    class App {
+        +state: SimStateLike
+        +tick: number
+        +start(): void
+        +stop(): void
+        +frameStep(time: number): void
+    }
+    class SimState {
+        +session: BattleSessionLike
+        +buses: BusBundle
+        +world: BattleWorld
+    }
+    class GameEventBus {
+        +emit(type, a, b, c): void
+        +drain(out: GameEvent[]): number
+        +droppedCount: number
+    }
+    class GameEvent {
+        +type: GameEventType
+        +a: number
+        +b: number
+        +c: number
+    }
+
+    FullRunRunner ..> FullRunOptions : uses
+    FullRunRunner ..> FullRunResult : returns
+    FullRunRunner ..> FullRunSample : produces
+    FullRunRunner --> EventTally : delegates drain
+    FullRunRunner --> App : builds headless
+    FullRunRunner --> SimState : drives tick
+    FullRunResult o-- FullRunSample
+    EventTally ..> GameEventBus : drains
+    EventTally ..> GameEvent
+    SimState o-- GameEventBus
+    AppHook ..> AppHookResult : returns
+    AppHook ..> App : patches prototype, captures instance
+    AppHook ..> FrozenState : returns
+    FastForwardDriver --> AppHook : requires frozen app
+    FastForwardDriver ..> FastForwardOptions : uses
+    FastForwardDriver ..> FastForwardSample : returns
+    FastForwardDriver --> App : calls frameStep
+    HudProbe ..> HudSnapshot : returns
+    HudProbe ..> ResultPanel : returns
+    FullRunSpec --> FullRunRunner : node assertions
+    FullRunSpec --> FastForwardDriver : browser assertions
+    FullRunSpec --> HudProbe : DOM assertions
