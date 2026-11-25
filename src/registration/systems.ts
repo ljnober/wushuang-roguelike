@@ -48,6 +48,7 @@ import {
   resetEffectRuntime,
 } from '../ecs/systems/EffectSystems';
 import { StatResolveSystem } from '../ecs/systems/StatResolveSystem';
+import { applyPendingLoadout, resetRunLoot } from '../game/RunLoot';
 import {
   BossSystem,
   DropSystem,
@@ -123,6 +124,7 @@ export function createBattleState(options: CreateStateOptions = {}): SimState {
   resetNetIdAllocator();
   resetEffectRuntime();
   resetProgressionRuntime();
+  resetRunLoot();
 
   const world: BattleWorld = createBattleWorld();
   const statCount = config.stats.all().length;
@@ -192,6 +194,9 @@ export function createBattleState(options: CreateStateOptions = {}): SimState {
     }
   }
   battleSession(state).nextNetId = players.length + 1;
+
+  // 局外仓库装备在开局编译成 Modifier；只在 presentation 显式注入时生效。
+  if (players.length > 0) applyPendingLoadout(state, 0, players[0]);
 
   // 效果只在开局编译一次：通用普攻 + 所选武将的三个技能槽。
   // 不再从 Registry 前 4 项硬编码取效果；全局 onKill/onCritical 效果本轮仍不编译。

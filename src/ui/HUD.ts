@@ -278,7 +278,8 @@ export class HUD implements HUDLike {
     this.level = 1;
     this.exp = 0;
     this.expNext = 10;
-    this.score = 0;
+    // 开局/重开瞬间 HUD 先于首 tick 可见：显示 Lv.1 基线而不是 0/1 与 0 分的闪帧。
+    this.score = 100;
     this.lastHp = -1;
     this.lastMaxHp = -1;
     this.lastExp = -1;
@@ -289,11 +290,11 @@ export class HUD implements HUDLike {
     this.bossWarningUntil = 0;
     this.bossBanner.style.display = 'none';
     this.toastBox.replaceChildren();
-    this.setHealth(0, 1);
+    this.setHealth(120, 120);
     this.setLevel(1, 0, 10);
     this.setTime(0);
     this.setKills(0);
-    this.setScore(0);
+    this.setScore(this.score);
   }
 
   unmount(): void {

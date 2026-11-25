@@ -6,8 +6,8 @@
  */
 import type { Eid } from '../../bit/types';
 import type { BattleWorld } from '../../bit/adapter';
-import { query } from '../../bit/adapter';
-import { Faction, Health, PlayerId, Position } from '../../bit/components';
+import { has, query } from '../../bit/adapter';
+import { Behavior, Faction, Health, PlayerId, Position } from '../../bit/components';
 import { hash32, Rng } from '../../../core/Rng';
 import { TICK_RATE } from '../../../core/Constants';
 import type { GameConfig } from '../../../data/types';
@@ -79,6 +79,11 @@ export class AIShadowPlayerSystem implements IControlSource {
     let bestDistSq = Number.POSITIVE_INFINITY;
     let bestDx = 0;
     let bestDy = 0;
+    // BOSS 在视野内时优先集火：否则 auto 轨迹会永远打身边的小兵，8 分钟局超时战败。
+    let bossEid: Eid = -1;
+    let bossDistSq = 600 * 600;
+    let bossDx = 0;
+    let bossDy = 0;
     for (let i = 0; i < ents.length; i++) {
       const eid = ents[i];
       if (Faction.value[eid] !== 1) continue;
@@ -92,6 +97,20 @@ export class AIShadowPlayerSystem implements IControlSource {
         bestDx = dx;
         bestDy = dy;
       }
+      if (
+        has(this.world, eid, Behavior) && Behavior.p2[eid] > 0 && distSq < bossDistSq
+      ) {
+        bossDistSq = distSq;
+        bossEid = eid;
+        bossDx = dx;
+        bossDy = dy;
+      }
+    }
+    if (bossEid >= 0) {
+      bestEid = bossEid;
+      bestDistSq = bossDistSq;
+      bestDx = bossDx;
+      bestDy = bossDy;
     }
 
     if (bestEid < 0) {
@@ -125,6 +144,11 @@ export class AIShadowPlayerSystem implements IControlSource {
       const side = jitter >= 0 ? 1 : -1;
       moveX = -dirY * side + dirX * 0.2;
       moveY = dirX * side + dirY * 0.2;
+    }
+    // BOSS 战不再 kiting：贴身追击才能进入范围技能半径，否则 8 分钟局永远打不掉 BOSS。
+    if (bossEid >= 0) {
+      moveX = dirX;
+      moveY = dirY;
     }
     const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
     if (moveLen > 0) {

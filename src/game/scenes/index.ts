@@ -44,6 +44,8 @@ export interface ResultPayload {
   readonly level: number;
   readonly elapsed: number;
   readonly damage: number;
+  readonly lootEquipment?: number;
+  readonly lootGems?: number;
 }
 
 /** 场景依赖，由 presentation.ts 在注册期一次性注入。 */
@@ -313,6 +315,7 @@ export class ResultScene extends OverlayScene {
 
     const content = el('div', 'panel result-panel');
     content.append(el('h1', 'result-title', result.victory ? '胜利' : '战败'));
+    content.append(el('p', 'result-loot', `本局战利品：装备 ${result.lootEquipment ?? 0} · 宝石 ${result.lootGems ?? 0}（已存入仓库）`));
     content.append(
       el(
         'p',

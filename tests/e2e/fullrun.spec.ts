@@ -10,8 +10,8 @@
  *   npx playwright test --project=fullrun --reporter=line
  *   （playwright.config.ts 的 webServer 自动拉起 vite dev 5173）
  *
- * 终态口径：result ∈ {1,2} 且结算面板可见；BOSS 在 auto 下 480s 内可能未击杀而 Defeat，
- * 这是已记录的玩法平衡项，不强求 Victory。精确 Victory 断言只在 node 确定性测试做。
+ * 终态口径：result ∈ {1,2} 且结算面板可见；局内装备/宝石掉落会改变随机序列，
+ * 浏览器侧不强求特定胜负。精确 Victory/事件计数断言只在 node 确定性测试做。
  */
 import { test, expect, type Page } from '@playwright/test';
 import { hookApp, waitForApp, freezeApp, type FrozenState } from './helpers/appHook';

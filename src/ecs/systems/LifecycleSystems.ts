@@ -209,7 +209,8 @@ export function spawnCombatEntity(state: SimState, opts: SpawnOptions): Eid {
   const isBoss = bossIndex > 0;
   const elite = opts.elite === true;
   const def = state.config.enemies.tryGet(opts.enemyId);
-  const hp = opts.hpOverride ?? (isBoss ? 1200 : (def?.hp ?? 40)) * (elite ? 3 : 1);
+  // BOSS 基础生命：局内成长改由装备/技能驱动后，1200 会让 8 分钟局在 auto 轨迹下超时战败。
+  const hp = opts.hpOverride ?? (isBoss ? 900 : (def?.hp ?? 40)) * (elite ? 3 : 1);
   const damage = opts.damageOverride ?? (isBoss ? 32 : (def?.damage ?? 8)) * (elite ? 1.5 : 1);
   const radius = (def?.radius ?? 12) * (elite ? 1.4 : 1);
 

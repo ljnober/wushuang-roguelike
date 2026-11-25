@@ -28,7 +28,10 @@ import type { HUDLike } from '../ecs/systems/RenderSystems';
 import type { GameEvent } from '../ecs/bridge/GameEventBus';
 import { HUD } from '../ui/HUD';
 import { TouchControls } from '../ui/TouchControls';
-import { CardsAndLevelUp, pickChoices } from '../ui/CardsAndLevelUp';
+import { CardsAndLevelUp, type LevelUpChoice } from '../ui/CardsAndLevelUp';
+import { resolveSkillSlots } from '../data/skillSlots';
+import { getLevelChoices, selectLevelChoice } from '../ecs/systems/ProgressionSystems';
+import { collectRunLoot, getSkillLevel, setPendingLoadout } from '../game/RunLoot';
 import { EquipmentUI } from '../ui/EquipmentUI';
 import { MetaUI } from '../ui/MetaUI';
 import {
@@ -239,6 +242,7 @@ export function register(app: App): void {
       cards?.setAutoMode(auto);
       saveSystem.save(save);
       pushCommand(CommandType.AutoToggle, auto ? 1 : 0, 0, 0);
+      (app.state.session as unknown as { autoLevel?: number }).autoLevel = auto ? 1 : 0;
     };
     touch.setAutoMode(save.meta.settings.controlMode === 'auto');
   }
@@ -268,9 +272,29 @@ export function register(app: App): void {
           kills?: number;
           level?: number;
           elapsed?: number;
+          localPlayerId?: number;
         } | null;
         // 仅当 session 与 HUD 都不可用时才用公式兜底，不参与正常结算，绝不二次叠加。
         const fallbackScore = (shown?.kills ?? 0) * 10 + (shown?.level ?? 1) * 100;
+        // 局内战利品带回仓库（D3 秘境式长期成长）；本处已有 resultShown 去重，只写一次。
+        const loot = collectRunLoot(sessionState?.localPlayerId ?? 0);
+        let lootEquipment = 0;
+        let lootGems = 0;
+        const warehouse = save.meta.warehouse;
+        for (let i = 0; i < loot.equipment.length; i++) {
+          const item = loot.equipment[i];
+          if (warehouse.capacity > 0 && warehouse.items.length >= warehouse.capacity) break;
+          if (warehouse.items.some((owned) => owned.uid === item.uid)) continue;
+          warehouse.items.push(item);
+          lootEquipment++;
+        }
+        for (let i = 0; i < loot.gems.length; i++) {
+          const gem = loot.gems[i];
+          if (save.meta.gems.inventory.some((owned) => owned.uid === gem.uid)) continue;
+          save.meta.gems.inventory.push(gem);
+          lootGems++;
+        }
+        saveSystem.saveNow(save);
         const payload: ResultPayload = {
           victory: event.type === GameEventType.Victory,
           mode: 'campaign_8min',
@@ -280,6 +304,8 @@ export function register(app: App): void {
           level: sessionState?.level ?? shown?.level ?? 1,
           elapsed: sessionState?.elapsed ?? shown?.elapsed ?? 0,
           damage: 0,
+          lootEquipment,
+          lootGems,
         };
         app.sceneManager.switchTo('result', payload);
       }
@@ -288,9 +314,39 @@ export function register(app: App): void {
 
   const showLevelUp = (): void => {
     if (cards === null) return;
-    const choices = pickChoices(config, 0x9e3779b9, getSimTick(), 3);
+    const codes = new Int32Array(3);
+    getLevelChoices(0, codes);
+    const bindings = resolveSkillSlots(config, save.meta.selectedGeneral);
+    const stats = config.stats.all();
+    const choices: LevelUpChoice[] = [];
+    let pickCode = -1;
+    for (let i = 0; i < codes.length; i++) {
+      const code = codes[i];
+      if (code >= 0 && code < 3) {
+        const skill = config.skills.tryGet(bindings[code].skillId);
+        if (skill === undefined) continue;
+        const level = getSkillLevel(0, code) + 1;
+        choices.push({
+          id: skill.id,
+          name: skill.name,
+          description: `技能等级 ${level} · 伤害 ×${Math.pow(1.3, level - 1).toFixed(2)} · ${skill.tags.join(' · ')}`,
+          level,
+          tags: skill.tags,
+        });
+      } else {
+        const stat = stats[code - 3];
+        if (stat === undefined) continue;
+        choices.push({ id: stat.id, name: stat.name, description: '属性强化 +3', level: 1, tags: ['属性'] });
+      }
+      if (pickCode < 0) pickCode = code;
+    }
     if (choices.length === 0) return;
+    // auto 模式由 ECS 默认选第一项，弹窗会挡住战斗；手动模式才等待玩家点选。
+    if (save.meta.settings.controlMode === 'auto') return;
     cards.show(choices, (choice) => {
+      for (let i = 0; i < choices.length; i++) {
+        if (choices[i].id === choice.id) selectLevelChoice(0, i);
+      }
       const upgrades = save.meta.upgrades;
       upgrades[choice.id] = (upgrades[choice.id] ?? 0) + 1;
       saveSystem.save(save);
@@ -321,6 +377,17 @@ export function register(app: App): void {
       pickedGems: [],
       pity: {},
     };
+    // 局外仓库中该武将已穿戴的装备，开局即编译为属性 Modifier。
+    const loadout = save.meta.loadouts[request.generalId] ?? {};
+    const equippedUids: string[] = [];
+    for (const slotId in loadout) {
+      const uid = loadout[slotId];
+      if (uid !== null && uid !== undefined) equippedUids.push(uid);
+    }
+    const worn = equippedUids
+      .map((uid) => save.meta.warehouse.items.find((item) => item.uid === uid))
+      .filter((item): item is NonNullable<typeof item> => item !== undefined);
+    setPendingLoadout(request.generalId, worn);
     const session = app.state.session as unknown as {
       startBattle?: (mode: string, generalId: string, shadowCount?: number) => void;
     } | null;
@@ -329,6 +396,9 @@ export function register(app: App): void {
       // 造成"多个英雄 / 闪烁"的观感。headless 整局测试仍用默认 2 影子，不受影响。
       session.startBattle(request.mode, request.generalId, 0);
     }
+    // 手动模式不要由 ECS 预选升级卡（否则玩家点选会二次升级）。
+    (app.state.session as unknown as { autoLevel?: number }).autoLevel =
+      save.meta.settings.controlMode === 'auto' ? 1 : 0;
     // startBattle 会替换命令总线，因此自动/Manual 状态必须在开战后重新下发，
     // 否则默认 auto 存档只在 UI 上显示"自动"，ECS 仍按手动空转。
     pushCommand(
@@ -357,6 +427,7 @@ export function register(app: App): void {
     setQuality,
     setControlMode: (mode: 'auto' | 'manual'): void => {
       pushCommand(CommandType.AutoToggle, mode === 'auto' ? 1 : 0, 0, 0);
+      (app.state.session as unknown as { autoLevel?: number }).autoLevel = mode === 'auto' ? 1 : 0;
     },
     resetBattle: () => {
       runtime.pools?.releaseAll();

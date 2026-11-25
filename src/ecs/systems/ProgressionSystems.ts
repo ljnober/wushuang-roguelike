@@ -30,11 +30,20 @@ import { spawnCombatEntity, spawnPickup, battleSession } from './LifecycleSystem
 import { fireProjectile } from './CombatSystems';
 import { cosLut, sinLut } from '../../engine/SweptCollision';
 import type { SimState } from '../scheduler';
+import {
+  grantLoot,
+  levelUpSkill,
+  makeDroppedEquipment,
+  makeDroppedGem,
+} from '../../game/RunLoot';
+import { levelSkillSlotDamage } from './EffectSystems';
+import { createModifier, sourceKindOf } from './StatResolveSystem';
 
 /** 拾取物种类（Pickup.kind）。 */
 export const PICKUP_EXP = 0;
 export const PICKUP_MATERIAL = 1;
 export const PICKUP_EQUIPMENT = 2;
+export const PICKUP_GEM = 3;
 
 /** 运行状态：按玩家席位索引的固定 typed array，零运行期分配。 */
 const expByPlayer = new Float32Array(MAX_PLAYERS);
@@ -122,7 +131,32 @@ export class DropSystem {
       if (table !== undefined && table.entries.length > 0 && this.rng.next() < 0.4) {
         const entry = table.entries[this.rng.int(table.entries.length)];
         const qty = entry.minQty + this.rng.int(Math.max(1, entry.maxQty - entry.minQty + 1));
-        spawnPickup(state, x - 8, y, PICKUP_MATERIAL, qty, entry.itemId.length);
+        if (entry.itemId.startsWith('equipment_')) {
+          // 装备条目：按稀有度筛出具体配置，cfgId = 1-based 注册表下标。
+          const rarity = entry.itemId.slice('equipment_'.length);
+          const defs = state.config.equipment.all();
+          let count = 0;
+          for (let k = 0; k < defs.length; k++) if (defs[k].rarity === rarity) count++;
+          if (count > 0) {
+            let nth = this.rng.int(count);
+            for (let k = 0; k < defs.length; k++) {
+              if (defs[k].rarity !== rarity) continue;
+              if (nth-- === 0) {
+                spawnPickup(state, x - 8, y, PICKUP_EQUIPMENT, hash32(session.roomSeed, eid, tick, 0x9711), k + 1);
+                break;
+              }
+            }
+          }
+        } else if (entry.itemId.startsWith('gem_')) {
+          const gems = state.config.gems.all();
+          for (let k = 0; k < gems.length; k++) {
+            if (gems[k].id !== entry.itemId) continue;
+            spawnPickup(state, x - 8, y, PICKUP_GEM, gems[k].tier, k + 1);
+            break;
+          }
+        } else {
+          spawnPickup(state, x - 8, y, PICKUP_MATERIAL, qty, entry.itemId.length);
+        }
       }
     }
   }
@@ -162,6 +196,18 @@ export class PickupSystem {
         if (Pickup.kind[item] === PICKUP_EXP) {
           expByPlayer[playerId] += Pickup.amount[item];
           state.buses.events.emit(GameEventType.Pickup, playerId, PICKUP_EXP, Pickup.amount[item]);
+        } else if (Pickup.kind[item] === PICKUP_EQUIPMENT) {
+          const drop = makeDroppedEquipment(
+            state, Pickup.cfgId[item], Pickup.amount[item], item, battleSession(state).roomSeed,
+          );
+          if (drop === null) continue;
+          grantLoot(state, playerId, player, drop, false);
+          state.buses.events.emit(GameEventType.Pickup, playerId, PICKUP_EQUIPMENT, Pickup.cfgId[item]);
+        } else if (Pickup.kind[item] === PICKUP_GEM) {
+          const drop = makeDroppedGem(state, Pickup.cfgId[item], item, battleSession(state).roomSeed);
+          if (drop === null) continue;
+          grantLoot(state, playerId, player, drop, true);
+          state.buses.events.emit(GameEventType.Pickup, playerId, PICKUP_GEM, Pickup.cfgId[item]);
         } else {
           state.buses.events.emit(GameEventType.Pickup, playerId, Pickup.kind[item], Pickup.cfgId[item]);
         }
@@ -201,10 +247,21 @@ export class ExpSystem {
         continue;
       }
       this.rng.setState(hash32(session.roomSeed, playerId, tick, 0xe1e1));
+      // 0..2 = 本武将技能槽等级 +1；3.. = STAT_DEFS 下标属性强化。
+      const choiceCount = 3 + state.config.stats.all().length;
       for (let c = 0; c < 3; c++) {
-        choicesByPlayer[playerId * 3 + c] = this.rng.int(9);
+        choicesByPlayer[playerId * 3 + c] = this.rng.int(choiceCount);
       }
-      selectedByPlayer[playerId] = 0;
+      // auto 模式优先强化技能（割草输出成长）；manual 模式等待玩家点选真实卡片。
+      const autoLevel = battleSession(state).autoLevel;
+      let autoPick = 0;
+      for (let c = 0; c < 3; c++) {
+        if (choicesByPlayer[playerId * 3 + c] < 3) {
+          autoPick = c;
+          break;
+        }
+      }
+      selectedByPlayer[playerId] = autoLevel === 0 ? -1 : autoPick;
       // 三选一数据仍在 choicesByPlayer，事件槽改为 HUD 可直接消费的语义：
       // a=等级(1-based)、b=升级所需经验、c=当前经验。
       state.buses.events.emit(
@@ -223,6 +280,7 @@ export class ExpSystem {
 /** order 16：应用三选一结果（选择写 Modifier → 标脏 → 下 tick 生效）。 */
 export class LevelUpSystem {
   private readonly terms = [PlayerTag, PlayerId, Health];
+  private damageStat = -1;
 
   run(state: SimState, tick: number): void {
     void tick;
@@ -236,7 +294,27 @@ export class LevelUpSystem {
       }
       const choice = choicesByPlayer[playerId * 3 + selectedByPlayer[playerId]];
       selectedByPlayer[playerId] = -1;
-      const stat = choice % 14;
+      // 每级同时获得 4% 基础增伤：保证升级一定带来可感知的割草输出成长。
+      if (this.damageStat < 0) {
+        const stats = state.config.stats.all();
+        for (let k = 0; k < stats.length; k++) if (stats[k].id === 'damage') this.damageStat = k;
+      }
+      createModifier(state, eid, {
+        stat: Math.max(0, this.damageStat),
+        op: 'ADD',
+        value: 0.04,
+        bucket: 0,
+        priority: 4,
+        sourceKind: sourceKindOf('skill'),
+        group: 0,
+      });
+      if (choice < 3) {
+        // 技能强化：直接放大已编译效果参数，不改系统顺序、不重编译。
+        levelUpSkill(playerId, choice);
+        levelSkillSlotDamage(state, eid, choice);
+        continue;
+      }
+      const stat = choice - 3;
       const mod = state.pool.entities.acquire();
       add(world, mod, Modifier);
       add(world, mod, ModifierOwner(eid));

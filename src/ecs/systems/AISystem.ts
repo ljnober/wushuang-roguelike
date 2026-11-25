@@ -78,7 +78,7 @@ export class AISystem {
 
       const behavior = Behavior.type[eid];
       const ranged = behavior === BEHAVIOR_KITE || behavior === BEHAVIOR_BOSS;
-      const standoff = behavior === BEHAVIOR_KITE ? 170 : behavior === BEHAVIOR_BOSS ? 130 : 0;
+      const standoff = behavior === BEHAVIOR_KITE ? 170 : behavior === BEHAVIOR_BOSS ? 80 : 0;
       if (standoff > 0 && dist < standoff) {
         Behavior.p0[eid] = -dirX;
         Behavior.p1[eid] = -dirY;

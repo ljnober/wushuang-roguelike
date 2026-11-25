@@ -36,6 +36,7 @@ import {
   Modifier,
   ModifierOwner,
   Position,
+  StatBlock,
   TriggerReg,
 } from '../bit/components';
 import { CompareCode } from '../components/effect';
@@ -115,11 +116,28 @@ function compareCodeOf(name: string): number {
 const buffCarrier = new Int32Array(CAP);
 /** 已编译的 (owner, slot, effectId) 集合，仅编译期使用；同效果不同槽位视为不同实体。 */
 const compiledEffects = new Set<string>();
+/** 每个技能槽 damage 动作的 ParamPool 偏移；升级时原地放大，不重编译、不分配实体。 */
+const skillDamageParams = new Map<string, number[]>();
 
 /** 清空编译期映射（新建世界 / 测试隔离时调用）。 */
 export function resetEffectRuntime(): void {
   buffCarrier.fill(0);
   compiledEffects.clear();
+  skillDamageParams.clear();
+}
+
+/**
+ * 技能升级：把该宿主槽位已编译的全部 damage 参数乘 1.3。
+ * 只由 LevelUpSystem 在非热路径调用；无升级时完全不触发，确定性基线不变。
+ */
+export function levelSkillSlotDamage(state: SimState, owner: Eid, slot: number): void {
+  const refs = skillDamageParams.get(owner + ':' + slot);
+  if (refs === undefined) return;
+  const data = state.pool.params.data;
+  for (let i = 0; i < refs.length; i++) {
+    const ref = refs[i];
+    if (ref >= 0 && ref < data.length) data[ref] *= 1.3;
+  }
 }
 
 /**
@@ -182,7 +200,11 @@ export class EffectRegistry {
 
   private handleDamage = (state: SimState, actionEid: Eid, owner: Eid, params: Float32Array): void => {
     const ref = Action.paramRef[actionEid];
-    const amount = params[ref];
+    // 装备/技能产出的 damage 修正默认 0：乘数恒为 1，旧确定性基线逐位不变。
+    const block = StatBlock as unknown as Record<string, Float32Array | undefined>;
+    const dmgArr = block['damage'];
+    const bonus = has(state.world, owner, StatBlock) && dmgArr !== undefined ? dmgArr[owner] : 0;
+    const amount = params[ref] * (1 + Math.max(0, bonus));
     const radius = params[ref + 1];
     if (radius <= 0) {
       const target = EffectContext.target[0] >>> 0;
@@ -394,6 +416,22 @@ export class EffectCompileSystem {
       return;
     }
     params.write(ref, def.params);
+
+    if (slot !== undefined) {
+      const refs: number[] = [];
+      for (let i = 0; i < def.actions.length; i++) {
+        if (def.actions[i].op === 'damage') refs.push(ref + def.actions[i].paramRef);
+      }
+      if (refs.length > 0) {
+        const key = owner + ':' + slotKey;
+        const existing = skillDamageParams.get(key);
+        if (existing !== undefined) {
+          for (let i = 0; i < refs.length; i++) existing.push(refs[i]);
+        } else {
+          skillDamageParams.set(key, refs);
+        }
+      }
+    }
 
     const main = state.pool.effects.compile(cfgId, owner);
     ActiveEffect.defId[main] = cfgId;

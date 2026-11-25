@@ -13,25 +13,32 @@
 import { runFullRun, type FullRunResult, type FullRunSample } from './helpers/fullrunRunner';
 
 /** §7.1 冻结基线（spike 两次独立复跑逐字段一致）。 */
+/**
+ * 局内成长闭环（docs/ARCH_RUN_LOOT.md）上线后重算的基线：
+ * 装备/宝石掉落 + 技能强化 + BOSS 视野内集火/贴身，auto 在 425s 击杀 BOSS 获胜。
+ * 两次独立复跑仍必须逐字段一致（M14）。
+ */
 const BASELINE = {
   result: 1,
-  tick: 28210,
-  elapsed: 470.166667,
-  kills: 573,
-  level: 8,
-  score: 6530,
+  tick: 25503,
+  elapsed: 425.05,
+  kills: 580,
+  level: 10,
+  score: 6800,
   bossSpawned: 1,
   waveIndex: 5,
   dropped: 0,
 } as const;
 
-/** §0.1 事件计数基线（tally key 由 eventName 统一映射）。 */
+/** 事件计数基线（tally key 由 eventName 统一映射）。 */
 const EVENT_BASELINE: Readonly<Record<string, number>> = {
-  Damage: 1370,
-  Kill: 573,
-  Pickup: 572,
-  LevelUp: 9,
-  BossWarn: 14,
+  Damage: 1391,
+  Kill: 580,
+  Pickup: 703,
+  Equip: 21,
+  GemSocket: 12,
+  LevelUp: 11,
+  BossWarn: 2,
   BossPhase: 2,
   Victory: 1,
 };

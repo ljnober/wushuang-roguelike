@@ -405,7 +405,10 @@ export const DROP_TABLE_DEFS: readonly DropTableDef[] = [
   {
     id: 'drop_common',
     entries: [
-      { itemId: 'essence', weight: 70, minQty: 1, maxQty: 2 },
+      { itemId: 'essence', weight: 62, minQty: 1, maxQty: 2 },
+      // 普通怪也掉白/蓝装：让「刷怪 → 掉装备 → 换装」闭环在第一分钟就能被玩家感知。
+      { itemId: 'equipment_common', weight: 8, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_blue', weight: 2, minQty: 1, maxQty: 1 },
       { itemId: 'gem_red_t1', weight: 10, minQty: 1, maxQty: 1 },
       { itemId: 'gem_blue_t1', weight: 10, minQty: 1, maxQty: 1 },
       { itemId: 'gem_yellow_t1', weight: 5, minQty: 1, maxQty: 1 },
