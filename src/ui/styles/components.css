@@ -10,6 +10,7 @@
  *   本文件拥有：.chip .tab .badge .skeleton .empty-state .error-bar .hint
  *               .is-selected .is-active .is-loading .is-empty .is-error .is-disabled
  *               .rarity-common .rarity-blue .rarity-gold .rarity-legendary
+ *               .rarity-ancient .rarity-primal
  */
 
 /* ==========================================================================
@@ -110,6 +111,14 @@
 
 .rarity-legendary {
   color: var(--ws-rarity-legendary);
+}
+
+.rarity-ancient {
+  color: var(--ws-rarity-ancient);
+}
+
+.rarity-primal {
+  color: var(--ws-rarity-primal);
 }
 
 /* ==========================================================================

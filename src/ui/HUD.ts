@@ -11,9 +11,10 @@ import { GameEventType } from '../ecs/bridge/enums';
 import type { GameEvent } from '../ecs/bridge/GameEventBus';
 import type { HUDLike } from '../ecs/systems/RenderSystems';
 import { has, query } from '../ecs/bit/adapter';
-import { Health, PlayerTag, Position } from '../ecs/bit/components';
+import { Health, PlayerId, PlayerTag } from '../ecs/bit/components';
 import type { BattleWorld } from '../ecs/bit/adapter';
 import type { Eid } from '../ecs/bit/types';
+import type { HUDInitialSnapshot } from './types/RunStatusVM';
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -58,7 +59,7 @@ export class HUD implements HUDLike {
   private lastKills = -1;
   private lastScore = -1;
   private bossWarningUntil = 0;
-  private readonly playerTerms = [Position, PlayerTag];
+  private readonly playerTerms = [PlayerId, PlayerTag];
 
   constructor(private readonly host: HTMLElement) {
     this.root = el('div', 'hud');
@@ -107,11 +108,19 @@ export class HUD implements HUDLike {
   updateFromWorld(world: BattleWorld | null, session: unknown): void {
     if (world !== null) {
       const players = query(world, this.playerTerms);
-      if (players.length > 0) {
-        const eid = players[0] as Eid;
-        if (has(world, eid, Health)) {
-          this.setHealth(Health.cur[eid], Health.max[eid]);
+      const sessionView = session as { localPlayerId?: number } | null;
+      const rawId = sessionView === null ? undefined : sessionView.localPlayerId;
+      const localId = typeof rawId === 'number' && Number.isFinite(rawId) ? rawId : -1;
+      let eid: Eid | null = null;
+      // 多席位严格按 session.localPlayerId 匹配；匹配不到保持上一帧，绝不回退 players[0]。
+      for (let i = 0; i < players.length; i++) {
+        if (PlayerId.value[players[i]] === localId) {
+          eid = players[i];
+          break;
         }
+      }
+      if (eid !== null && has(world, eid, Health)) {
+        this.setHealth(Health.cur[eid], Health.max[eid]);
       }
     }
     const elapsedTicks = readNumber(session, 'elapsedTicks');
@@ -273,13 +282,21 @@ export class HUD implements HUDLike {
     };
   }
 
-  reset(): void {
-    this.kills = 0;
-    this.level = 1;
-    this.exp = 0;
-    this.expNext = 10;
-    // 开局/重开瞬间 HUD 先于首 tick 可见：显示 Lv.1 基线而不是 0/1 与 0 分的闪帧。
-    this.score = 100;
+  /** 重置到开局真值；init 缺省时沿用旧的 Lv.1 / 120 / 100 基线，兼容旧调用方。 */
+  reset(init?: HUDInitialSnapshot): void {
+    const hp = init?.hp ?? 120;
+    const maxHp = init?.maxHp ?? 120;
+    const level = init?.level ?? 1;
+    const exp = init?.exp ?? 0;
+    const expNext = init?.expNext ?? 10;
+    const kills = init?.kills ?? 0;
+    const score = init?.score ?? 100;
+    const elapsed = init?.elapsedSec ?? 0;
+    this.kills = kills;
+    this.level = level;
+    this.exp = exp;
+    this.expNext = expNext;
+    this.score = score;
     this.lastHp = -1;
     this.lastMaxHp = -1;
     this.lastExp = -1;
@@ -290,11 +307,11 @@ export class HUD implements HUDLike {
     this.bossWarningUntil = 0;
     this.bossBanner.style.display = 'none';
     this.toastBox.replaceChildren();
-    this.setHealth(120, 120);
-    this.setLevel(1, 0, 10);
-    this.setTime(0);
-    this.setKills(0);
-    this.setScore(this.score);
+    this.setHealth(hp, maxHp);
+    this.setLevel(level, exp, expNext);
+    this.setTime(elapsed);
+    this.setKills(kills);
+    this.setScore(score);
   }
 
   unmount(): void {

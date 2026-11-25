@@ -31,6 +31,7 @@
 @import './cards.css';
 @import './touch.css';
 @import './components.css';
+@import './runStatus.css';
 
 /* ============ 场景与面板通用层（迁移自 EXTRA_CSS，已令牌化） ============ */
 

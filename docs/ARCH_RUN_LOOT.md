@@ -8,7 +8,7 @@
 - 系统顺序不变（Drop 13 / Pickup 14 / Exp 15 / LevelUp 16 / Boss 17）；装备属性只在拾取时编译，不在 tick 热路径新增实体。
 - `equipment_gems` 数组存宝石 **defId**（与配装 UI / 存档一致），宝石 uid 只在背包中去重。
 - 自动模式优先选技能卡；手动模式 ECS 不预选，玩家点选后下一 tick 生效。
-- 普通怪也有 10% 权重的白/蓝装掉落，保证第一分钟就能形成换装反馈；精英/BOSS 掉金/传奇。
+- 普通怪按权重掉白/蓝装（合计约 26%），保证第一分钟就能形成换装反馈；精英按权重掉黄/传奇/远古/太古，BOSS 掉传奇/远古/太古，档位越高权重越低。
 - BOSS 在 AI 视野（600px）内自动集火并贴身追击，避免 auto 轨迹 8 分钟超时战败。
 - 快照列清单不变；局内战利品是玩家私有运行态，不进入网络快照。
 - 无装备/无技能升级时伤害与旧版逐位一致（`damageStat=0` → 乘数 1）。确定性整局基线允许因新掉落重算，但两次复跑必须逐字段一致。
@@ -22,7 +22,7 @@
 | 2 | 装备 | `config.equipment.all()` 下标 + 1 | 词缀 roll seed |
 | 3 | 宝石 | `config.gems.all()` 下标 + 1 | 等级 tier |
 
-`DropSystem` 从掉落表 `equipment_gold` / `equipment_legendary` / `gem_*` 条目解析真实条目；材料条目保持旧行为。
+`DropSystem` 从掉落表 `equipment_common` / `equipment_blue` / `equipment_gold` / `equipment_legendary` / `equipment_ancient` / `equipment_primal` / `gem_*` 条目解析真实条目；材料条目保持旧行为。条目按 `weight` 加权抽取（旧版为等概率），cfgId 仍是注册表 1-based 下标。
 
 ## 3. `src/game/RunLoot.ts` 公共 API
 
@@ -41,7 +41,8 @@ levelUpSkill(playerId, slot): number
 
 ## 4. 属性编译规则
 
-- 词缀：按 `AFFIX_POOL` + `RARITY_DEFS.coefficient` + roll seed 生成数值，`createModifier` 写 `Modifier`（sourceKind=affix）。
+- 词缀：按 `AFFIX_POOL` + `RARITY_DEFS.coefficient` + roll seed 生成数值，`createModifier` 写 `Modifier`（sourceKind=affix）。词缀 tier 不得超过稀有度 `maxAffixTier`；tier4（damage / regen / expBonus）仅传奇及以上可 roll。
+- 命名：`equipmentName(def, uid)` 对传说及以上返回固定 `def.name`，对白/蓝/黄返回「材质前缀 + 槽位名 · 词缀主题」的确定性随机名；六档稀有度各有独立颜色令牌与图标样式。
 - `atk` 词缀额外生成 `damage` 修正 `value/24`，让攻击词缀真正提高效果伤害；基础 `damage=0` 时旧基线不变。
 - 宝石：自动镶入「孔位未满且稀有度最高」的装备；每颗宝石生成一个 `gem` 来源 Modifier。
 - 套装：统计已装备同套件数，≥2/≥4 编译 twoPiece/fourPiece；换装时整组重建。
@@ -66,12 +67,13 @@ levelUpSkill(playerId, slot): number
 ## 8. 文件写权
 
 - 新增：`src/game/RunLoot.ts`、`src/game/__tests__/runLoot.test.ts`、本文档。
-- 修改：`ProgressionSystems.ts`、`EffectSystems.ts`、`EffectCompileSystem` 参数放大、`presentation.ts`、`systems.ts`、`HUD.ts`、`scenes/index.ts`、`fullrunDeterminism.test.ts`（基线重算）。
+- 修改：`ProgressionSystems.ts`（加权抽取）、`EffectSystems.ts`、`EffectCompileSystem` 参数放大、`presentation.ts`、`systems.ts`、`HUD.ts`、`scenes/index.ts`、`fullrunDeterminism.test.ts`（基线重算）。
 - 冻结：`ecs/bit/*`、`ecs/scheduler.ts`、网络快照列清单、既有 E2E 断言。
-- 例外：`data/combat.ts` 的 `drop_common` 追加白/蓝装条目；`fullrunDeterminism.test.ts` 基线因新系统重算（两次复跑仍逐字段一致）。
+- 例外：`data/combat.ts` 的 `drop_common` 保留白/蓝装并在精英/BOSS 表追加远古/太古条目；`fullrunDeterminism.test.ts` 基线因六档稀有度与权重掉落重算（两次复跑仍逐字段一致）。
+- 六档稀有度新增/修改：`data/types.ts`、`data/stats.ts`、`data/equipment.ts`、`art/EquipmentIconFactory.ts`、`ui/EquipmentUI.ts`、`ui/ItemPreview.ts`、`ui/MetaUI.ts`、`ui/styles/*`。
 
-## 9. 验证结果（2026-11-25）
+## 9. 验证结果（2026-11-25，六档稀有度上线后）
 
-- typecheck 0 错；单测 169/169（17 文件）；build 成功（主 chunk 573KB，体积告警非错误）。
-- E2E 9/9（legacy 7 + fullrun 2），整局确定性两次复跑逐字段一致：Victory @ tick 25503 / 425.05s / kills 580 / level 10 / score 6800 / Equip 21 / GemSocket 12。
-- 浏览器实测：135s 自动穿戴 12 槽、终局 76 件装备 + 132 颗宝石写回仓库；零 console error / 404。
+- typecheck 0 错；单测 176/176（18 文件）；build 成功（主 chunk 575KB，体积告警非错误）。
+- E2E 9/9（legacy 7 + fullrun 2），整局确定性两次复跑逐字段一致：Victory @ tick 25435 / 423.92s / kills 597 / level 10 / score 6970 / Equip 26 / GemSocket 8 / LevelUp 12。
+- legacy E2E 需显式指定 `E2E_BASE_URL=http://127.0.0.1:5173/`：仓库里 `appFlow.spec.ts` 默认仍写死 4173 预览端口，与 playwright 配置拉起的 5173 开发服务器不一致（既有问题，非本轮改动）。

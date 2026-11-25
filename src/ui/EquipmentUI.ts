@@ -14,7 +14,7 @@ import {
   EQUIPMENT_SLOT_IDS,
   type EquipmentSlotId,
 } from '../art/EquipmentIconFactory';
-import { findRarity, SET_DEFS, SLOT_DEFS } from '../data/equipment';
+import { equipmentName, findRarity, RARITY_DEFS, SET_DEFS, SLOT_DEFS } from '../data/equipment';
 import { AFFIX_POOL, findStat } from '../data/stats';
 import type { GameConfig, RarityId } from '../data/types';
 import type { EquipmentItem, SaveData } from '../game/SaveData';
@@ -22,7 +22,7 @@ import { DragEquipController, type DragSourceVM } from './DragEquipController';
 import { ItemPreview, prefersDrawer, type StatDelta } from './ItemPreview';
 import { DOLL_SLOT_ANCHORS, PaperDoll, type DollSlotVM } from './PaperDoll';
 
-import { LEGENDARY_EFFECT_DEFS, RARITY_DEFS } from '../data/equipment';
+import { LEGENDARY_EFFECT_DEFS } from '../data/equipment';
 
 /** 主题选择器依赖倒置接口（T02 实现，T01 只依赖此签名，不 import 实现类）。 */
 export interface ThemePickerLike {
@@ -41,6 +41,8 @@ const RARITY_ORDER: Readonly<Record<RarityId, number>> = {
   blue: 1,
   gold: 2,
   legendary: 3,
+  ancient: 4,
+  primal: 5,
 };
 
 /** 创建按钮（沿用既有风格）。 */
@@ -306,9 +308,7 @@ export class EquipmentUI {
   private describeItem(item: EquipmentItem): string {
     const def = this.config.equipment.tryGet(item.defId);
     const rarity = def === undefined ? RARITY_DEFS[0] : findRarity(def.rarity);
-    const name = def === undefined
-      ? item.defId
-      : (SLOT_DEFS.find((s) => s.id === def.slot)?.name ?? def.id);
+    const name = equipmentName(def, item.uid);
     const sockets = item.gems.length > 0 ? ` [${item.gems.length}/${item.sockets}]` : '';
     return `${rarity.name}·${name}${sockets}`;
   }
@@ -369,7 +369,7 @@ export class EquipmentUI {
       const label = item === null
         ? slot.name
         : known
-          ? slot.name
+          ? equipmentName(def, item.uid)
           : `未知装备（${item.defId}）`;
       const ariaLabel = item === null
         ? `${slot.name}：空`
@@ -440,13 +440,9 @@ export class EquipmentUI {
       ),
       buildRow(
         '稀有度',
-        [
-          { value: 'all', text: '全部' },
-          { value: 'common', text: '白' },
-          { value: 'blue', text: '蓝' },
-          { value: 'gold', text: '金' },
-          { value: 'legendary', text: '传奇' },
-        ],
+        [{ value: 'all', text: '全部' }].concat(
+          RARITY_DEFS.map((rarity) => ({ value: rarity.id, text: rarity.name })),
+        ),
         this.rarityFilter,
         (value) => {
           this.rarityFilter = value as RarityFilter;

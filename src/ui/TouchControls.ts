@@ -8,7 +8,9 @@
  * T03/S5 变更（仅表现层）：补充 aria-label 无障碍名称；className 一个字节未改
  * （appFlow.spec.ts 对 'skill-button touch-control' / 'joystick touch-control' 做逐字断言），
  * DOM 结构、pointer 行为与 FC-3 全部选择器逐字保持（3 个 data-skill、4 个 .skill-button.touch-control）。
+ * 技能键可见内容改为矢量 SVG 图标（aria-label/title 用真实技能名），不再出现「技1/技2/技3」。
  */
+import { dodgeIcon, fallbackSkillIcons, type SkillIconSpec } from '../art/SkillIconFactory';
 import { InputButton } from '../ecs/components/view';
 
 export type SkillHandler = (index: number, aimX: number, aimY: number) => void;
@@ -24,6 +26,13 @@ interface PointerState {
 }
 
 const DRAG_THRESHOLD = 12;
+
+/** 把矢量图写入按钮；保留 className / data-skill / pointer 绑定，只替换可见内容。 */
+function applySkillIcon(button: HTMLButtonElement, icon: SkillIconSpec): void {
+  button.innerHTML = icon.svg;
+  button.setAttribute('aria-label', icon.name);
+  button.title = icon.name;
+}
 
 export class TouchControls {
   private readonly root: HTMLDivElement;
@@ -60,15 +69,15 @@ export class TouchControls {
 
     const cluster = document.createElement('div');
     cluster.className = 'skill-cluster';
+    const fallbackIcons = fallbackSkillIcons();
     for (let i = 0; i < 3; i++) {
       const button = document.createElement('button');
       // className 必须逐字为 'skill-button touch-control'：
       // tests/e2e/appFlow.spec.ts 用数组 toContain('skill-button touch-control') 精确断言。
       button.className = 'skill-button touch-control';
       button.type = 'button';
-      button.textContent = `技${i + 1}`;
       button.dataset.skill = String(i);
-      button.setAttribute('aria-label', `技能 ${i + 1}`);
+      applySkillIcon(button, fallbackIcons[i] ?? fallbackIcons[0]);
       this.skillButtons.push(button);
       cluster.append(button);
     }
@@ -76,8 +85,7 @@ export class TouchControls {
     // 同上：闪避键也必须与技能键共用逐字相同的 className。
     this.dodgeButton.className = 'skill-button touch-control';
     this.dodgeButton.type = 'button';
-    this.dodgeButton.textContent = '闪避';
-    this.dodgeButton.setAttribute('aria-label', '闪避');
+    applySkillIcon(this.dodgeButton, dodgeIcon());
     cluster.append(this.dodgeButton);
 
     this.autoButton = document.createElement('button');
@@ -114,6 +122,14 @@ export class TouchControls {
     this.autoMode = auto;
     this.autoButton.textContent = auto ? '自动' : '手动';
     this.autoButton.setAttribute('aria-pressed', auto ? 'true' : 'false');
+  }
+
+  /** 按当前武将技能槽刷新矢量图标；不再显示「技1/技2/技3」。 */
+  setSkillIcons(icons: readonly SkillIconSpec[]): void {
+    const fallback = fallbackSkillIcons();
+    for (let i = 0; i < this.skillButtons.length; i++) {
+      applySkillIcon(this.skillButtons[i], icons[i] ?? fallback[i] ?? fallback[0]);
+    }
   }
 
   get auto(): boolean {

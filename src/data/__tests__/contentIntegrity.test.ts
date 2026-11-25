@@ -129,7 +129,7 @@ describe('内容完整性：装备 13 槽 / 4 套 / 传奇特效', () => {
         expect(cfg.stats.has(mod.stat)).toBe(true);
       }
     }
-    expect(AFFIX_POOL.length).toBe(10);
+    expect(AFFIX_POOL.length).toBe(13);
   });
 });
 

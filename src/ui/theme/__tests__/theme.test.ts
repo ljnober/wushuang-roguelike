@@ -37,12 +37,14 @@ const COLOR_ROLES: readonly string[] = [
   '--ws-shadow',
 ];
 
-/** PRD §5.2 的 4 档稀有度色。 */
+/** 六档稀有度色（DESIGN §8.4）。 */
 const RARITY_ROLES: readonly string[] = [
   '--ws-rarity-common',
   '--ws-rarity-blue',
   '--ws-rarity-gold',
   '--ws-rarity-legendary',
+  '--ws-rarity-ancient',
+  '--ws-rarity-primal',
 ];
 
 const ALL_ROLES: readonly string[] = [...COLOR_ROLES, ...RARITY_ROLES];

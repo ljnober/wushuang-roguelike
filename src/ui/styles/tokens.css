@@ -52,6 +52,8 @@
   --ws-rarity-blue: #8dc6ff;
   --ws-rarity-gold: #f3c744;
   --ws-rarity-legendary: #ff9d3f;
+  --ws-rarity-ancient: #54d6a0;
+  --ws-rarity-primal: #c77dff;
 
   /* --- 1.6 主题派生的补充色（PRD 角色表的自然延伸，供 base/components 使用） --- */
   --ws-color-red: #b3352b;                    /* 朱红：血条低值端 / 警示 */
@@ -138,6 +140,8 @@
   --ws-shadow-md: 0 8px 24px var(--ws-shadow-color);
   --ws-shadow-lg: 0 18px 52px var(--ws-shadow-color);
   --ws-shadow-glow: 0 0 18px 2px var(--ws-rarity-legendary);
+  --ws-shadow-glow-ancient: 0 0 22px 3px var(--ws-rarity-ancient);
+  --ws-shadow-glow-primal: 0 0 26px 4px var(--ws-rarity-primal);
 }
 
 /* ==========================================================================

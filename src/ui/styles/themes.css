@@ -12,6 +12,7 @@
  *     --ws-accent           --ws-text             --ws-text-muted      --ws-danger
  *     --ws-stat-up          --ws-stat-down        --ws-slot-empty      --ws-shadow
  *   稀有度：--ws-rarity-common / --ws-rarity-blue / --ws-rarity-gold / --ws-rarity-legendary
+ *            --ws-rarity-ancient / --ws-rarity-primal
  *
  * 本文件与 tokens.css 是**仅有的两个**允许出现裸色值的文件。
  *
@@ -47,6 +48,8 @@
   --ws-rarity-blue: #3f6b9a;
   --ws-rarity-gold: #9a7b25;
   --ws-rarity-legendary: #a8321f;
+  --ws-rarity-ancient: #16805d;
+  --ws-rarity-primal: #7b3fb8;
 
   /* --- 派生令牌（浅底重新定义，不做简单反色） --- */
   --ws-shadow-color: rgba(60, 50, 40, .22);
@@ -106,6 +109,8 @@
   --ws-rarity-blue: #5cc8ff;
   --ws-rarity-gold: #ffd24c;
   --ws-rarity-legendary: #ff8a3d;
+  --ws-rarity-ancient: #4df0ae;
+  --ws-rarity-primal: #d69bff;
 
   /* --- 派生令牌 --- */
   --ws-shadow-color: rgba(0, 0, 255, .35);
@@ -165,6 +170,8 @@
   --ws-rarity-blue: #7fa8d8;
   --ws-rarity-gold: #e0b04a;
   --ws-rarity-legendary: #e0653f;
+  --ws-rarity-ancient: #218765;
+  --ws-rarity-primal: #9048a8;
 
   /* --- 派生令牌（浅底重新定义） --- */
   --ws-shadow-color: rgba(160, 120, 130, .24);

@@ -5,9 +5,11 @@
  * DOM 弹窗不进 ECS；选择回调由 presentation 转成命令/状态写入。
  *
  * T03/S5 变更（仅表现层）：为标题/行/卡牌补充 BEM 修饰类作为令牌化 CSS 钩子。
- * pickChoices 数值逻辑、card 结构与全部文案逐字保持（FC-3）。
+ * pickChoices 数值逻辑与 card 结构不变（FC-3 选择器保持）；描述文案统一由
+ * formatLevelUpDescription 生成，不再保留硬编码副本。
  */
 import { Rng } from '../core/Rng';
+import { formatLevelUpDescription } from '../data/skillDescription';
 import type { GameConfig } from '../data/types';
 
 export interface LevelUpChoice {
@@ -47,7 +49,7 @@ export function pickChoices(config: GameConfig, seed: number, tick: number, coun
     out.push({
       id: def.id,
       name: def.name,
-      description: `伤害 ${def.damage} · 冷却 ${def.cooldown.toFixed(1)}s · 射程 ${def.range}`,
+      description: formatLevelUpDescription(def, def.level + 1),
       level: def.level + 1,
       tags: def.tags,
     });

@@ -8,13 +8,13 @@ import { SLOT_DEFS } from '../../data/equipment';
 import type { RarityId } from '../../data/types';
 import { EquipmentIconFactory, EQUIPMENT_SLOT_IDS } from '../EquipmentIconFactory';
 
-const RARITIES: readonly RarityId[] = ['common', 'blue', 'gold', 'legendary'];
+const RARITIES: readonly RarityId[] = ['common', 'blue', 'gold', 'legendary', 'ancient', 'primal'];
 
 function newFactory(): EquipmentIconFactory {
   return new EquipmentIconFactory();
 }
 
-describe('装备图标工厂：13 槽 × 4 稀有度全覆盖', () => {
+describe('装备图标工厂：13 槽 × 6 稀有度全覆盖', () => {
   it('槽位清单与 SLOT_DEFS 一致（13 个）', () => {
     expect(EQUIPMENT_SLOT_IDS).toHaveLength(13);
     expect([...EQUIPMENT_SLOT_IDS].sort()).toEqual(
@@ -22,7 +22,7 @@ describe('装备图标工厂：13 槽 × 4 稀有度全覆盖', () => {
     );
   });
 
-  it('52 种组合均产出格式正确的非空 data URL', () => {
+  it('78 种组合均产出格式正确的非空 data URL', () => {
     const factory = newFactory();
     let count = 0;
     for (const slot of EQUIPMENT_SLOT_IDS) {
@@ -38,7 +38,7 @@ describe('装备图标工厂：13 槽 × 4 稀有度全覆盖', () => {
         count += 1;
       }
     }
-    expect(count).toBe(52);
+    expect(count).toBe(78);
   });
 });
 
@@ -96,11 +96,11 @@ describe('形态区分度', () => {
     expect(new Set(svgs).size).toBe(13);
   });
 
-  it('同一槽位的 4 档稀有度 SVG 互不相同', () => {
+  it('同一槽位的 6 档稀有度 SVG 互不相同', () => {
     const factory = newFactory();
     for (const slot of EQUIPMENT_SLOT_IDS) {
       const svgs = RARITIES.map((rarity) => factory.svgFor(slot, rarity));
-      expect(new Set(svgs).size).toBe(4);
+      expect(new Set(svgs).size).toBe(6);
     }
   });
 

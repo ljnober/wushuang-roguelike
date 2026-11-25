@@ -405,14 +405,14 @@ export const DROP_TABLE_DEFS: readonly DropTableDef[] = [
   {
     id: 'drop_common',
     entries: [
-      { itemId: 'essence', weight: 62, minQty: 1, maxQty: 2 },
-      // 普通怪也掉白/蓝装：让「刷怪 → 掉装备 → 换装」闭环在第一分钟就能被玩家感知。
-      { itemId: 'equipment_common', weight: 8, minQty: 1, maxQty: 1 },
-      { itemId: 'equipment_blue', weight: 2, minQty: 1, maxQty: 1 },
-      { itemId: 'gem_red_t1', weight: 10, minQty: 1, maxQty: 1 },
-      { itemId: 'gem_blue_t1', weight: 10, minQty: 1, maxQty: 1 },
-      { itemId: 'gem_yellow_t1', weight: 5, minQty: 1, maxQty: 1 },
-      { itemId: 'gem_green_t1', weight: 5, minQty: 1, maxQty: 1 },
+      { itemId: 'essence', weight: 30, minQty: 1, maxQty: 2 },
+      // 普通怪也掉白/蓝装：权重贴近旧等概率时代的装备/宝石手感，避免早期无装可换。
+      { itemId: 'equipment_common', weight: 18, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_blue', weight: 8, minQty: 1, maxQty: 1 },
+      { itemId: 'gem_red_t1', weight: 12, minQty: 1, maxQty: 1 },
+      { itemId: 'gem_blue_t1', weight: 12, minQty: 1, maxQty: 1 },
+      { itemId: 'gem_yellow_t1', weight: 10, minQty: 1, maxQty: 1 },
+      { itemId: 'gem_green_t1', weight: 10, minQty: 1, maxQty: 1 },
     ],
     pity: 0,
     smartLoot: false,
@@ -423,6 +423,8 @@ export const DROP_TABLE_DEFS: readonly DropTableDef[] = [
       { itemId: 'soul', weight: 50, minQty: 1, maxQty: 3 },
       { itemId: 'equipment_gold', weight: 30, minQty: 1, maxQty: 1 },
       { itemId: 'equipment_legendary', weight: 8, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_ancient', weight: 2, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_primal', weight: 0.5, minQty: 1, maxQty: 1 },
       { itemId: 'gem_red_t3', weight: 12, minQty: 1, maxQty: 1 },
     ],
     pity: 12,
@@ -432,7 +434,9 @@ export const DROP_TABLE_DEFS: readonly DropTableDef[] = [
     id: 'drop_boss',
     entries: [
       { itemId: 'bossToken', weight: 40, minQty: 1, maxQty: 2 },
-      { itemId: 'equipment_legendary', weight: 35, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_legendary', weight: 30, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_ancient', weight: 8, minQty: 1, maxQty: 1 },
+      { itemId: 'equipment_primal', weight: 2, minQty: 1, maxQty: 1 },
       { itemId: 'soul', weight: 25, minQty: 3, maxQty: 6 },
     ],
     pity: 4,

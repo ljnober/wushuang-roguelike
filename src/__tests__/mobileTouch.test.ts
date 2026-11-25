@@ -46,6 +46,13 @@ describe('移动端触控 DOM 与命中区', () => {
     expect(root.querySelectorAll('.skill-button.touch-control').length).toBe(4); // 3 技能 + 闪避
     expect(root.querySelectorAll('.skill-button[data-skill]').length).toBe(3);
     expect(root.querySelectorAll('.touch-control__auto').length).toBe(1);
+    // 技能键显示矢量图，不再出现「技1/技2/技3」文字标号。
+    const skill = root.querySelector('.skill-button[data-skill="0"]') as HTMLButtonElement;
+    expect(skill.querySelector('svg.skill-button__icon')).not.toBeNull();
+    expect(skill.textContent ?? '').not.toMatch(/技\s*[123]/);
+    expect(skill.getAttribute('aria-label')).not.toMatch(/技能\s*[123]/);
+    const dodge = root.querySelector('.skill-button:not([data-skill])') as HTMLButtonElement;
+    expect(dodge.querySelector('svg.skill-button__icon')).not.toBeNull();
     // 初始隐藏，进入战斗后由 BattleScene 置为可见。
     expect(root.style.display).toBe('none');
     touch.unmount();

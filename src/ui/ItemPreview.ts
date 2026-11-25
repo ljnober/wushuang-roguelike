@@ -9,7 +9,7 @@
  *  - Esc / 外部点击 / pointerleave 只隐藏，不改变任何装备状态。
  */
 import { EquipmentIconFactory, type EquipmentSlotId } from '../art/EquipmentIconFactory';
-import { findRarity, LEGENDARY_EFFECT_DEFS, SET_DEFS, SLOT_DEFS } from '../data/equipment';
+import { equipmentName, findRarity, LEGENDARY_EFFECT_DEFS, SET_DEFS, SLOT_DEFS } from '../data/equipment';
 import { AFFIX_POOL, findStat } from '../data/stats';
 import type { GameConfig } from '../data/types';
 import type { EquipmentItem } from '../game/SaveData';
@@ -245,7 +245,7 @@ export class ItemPreview {
     const rarity = def !== undefined ? def.rarity : 'common';
     const slotDef = SLOT_DEFS.find((slot) => slot.id === req.slotId);
     const slotName = slotDef !== undefined ? slotDef.name : req.slotId;
-    const displayName = def === undefined ? `未知装备（${req.item.defId}）` : slotName;
+    const displayName = equipmentName(def, req.item.uid);
     const iconUrl = def !== undefined
       ? this.options.icons.dataUrlFor(req.slotId, def.rarity)
       : this.options.icons.placeholderDataUrlFor(req.slotId);

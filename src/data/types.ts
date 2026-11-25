@@ -102,7 +102,11 @@ export interface BossDef {
   }>;
 }
 
-export type RarityId = 'common' | 'blue' | 'gold' | 'legendary';
+/**
+ * 六档稀有度（DESIGN §8.4）：白 → 蓝 → 黄 → 传奇 → 远古传说 → 太古传说。
+ * 新增档位只能追加在末尾，已有字面量用于存档与确定性回放，不得改名。
+ */
+export type RarityId = 'common' | 'blue' | 'gold' | 'legendary' | 'ancient' | 'primal';
 
 export interface EquipmentDef {
   id: string;
@@ -112,6 +116,8 @@ export interface EquipmentDef {
   setId?: string;
   legendaryEffectId?: string;
   sockets: number;
+  /** 传说及以上固定名；白/蓝/黄留空，由槽位 + 词缀确定性生成。 */
+  name?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +196,8 @@ export interface SkillDef {
   projectile?: string;
   /** 技能等级成长（升级选牌时用）。 */
   level: number;
+  /** 静态说明兜底；增益文案由 formatter 动态生成，见 ARCH §3.4。 */
+  description?: string;
   /** 施法消耗（保留字段，默认 0）。 */
   cost: number;
 }
@@ -247,7 +255,10 @@ export interface StatDef {
   isPercent: boolean;
 }
 
-/** 词缀池条目（10 类），按稀有度系数放大。 */
+/**
+ * 词缀池条目。按稀有度系数放大，且只有达到 tier 的稀有度才能roll到。
+ * tier：1=基础（白起）/ 2=进阶（蓝起）/ 3=稀有（黄起）/ 4=高阶（传奇起）。
+ */
 export interface AffixDef {
   id: string;
   stat: string;
@@ -255,6 +266,7 @@ export interface AffixDef {
   min: number;
   max: number;
   isPercent: boolean;
+  tier: number;
 }
 
 /** 套装（4 套，各含 2 件/4 件效果）。 */
@@ -282,15 +294,19 @@ export interface LegendaryEffectDef {
   modifiers: ModifierDef[];
 }
 
-/** 稀有度档位配置：词缀条数、孔数、数值系数。 */
+/** 稀有度档位配置：词缀条数、可用词缀层级、孔数、数值系数、命名方式。 */
 export interface RarityDef {
   id: RarityId;
   name: string;
   affixCount: number;
+  /** 该档位可 roll 的最高词缀 tier（见 AffixDef.tier）。 */
+  maxAffixTier: number;
   sockets: number;
   coefficient: number;
-  /** 是否静默入包（白/蓝静默，稀有以上弹提示）。 */
+  /** 是否静默入包（白/蓝静默，黄以上弹提示）。 */
   silent: boolean;
+  /** 传说及以上使用固定名；白/蓝/黄使用结构化随机名。 */
+  fixedName: boolean;
 }
 
 /** 装备槽位定义（13 槽）。 */

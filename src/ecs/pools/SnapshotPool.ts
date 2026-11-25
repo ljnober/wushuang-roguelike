@@ -31,6 +31,8 @@ export class SnapshotPool {
   readonly versions: Uint32Array;
 
   private readonly free: number[] = [];
+  /** readBreakdown 复用的 4 长 contrib 缓冲，构造期一次分配，热路径零分配。 */
+  private readonly _breakdownOut = new Float32Array(CONTRIB_STRIDE);
 
   constructor(
     readonly slotCount: number,
@@ -128,6 +130,25 @@ export class SnapshotPool {
       slot * CONTRIB_STRIDE;
     for (let i = 0; i < CONTRIB_STRIDE; i++) {
       out[i] = this.contribution[base + i];
+    }
+  }
+
+  /**
+   * 聚合某快照槽某属性的贡献。调用方预分配并清零 out 数组（长度分别 >=
+   * SOURCE_PRIORITY.length 与 bucketCount）。遍历 MAX_CONTRIB_PER_STAT 个贡献槽，
+   * 读 [value, sourceKind, sourceId, bucket]，按 sourceKind 累加到 bySource[k]，
+   * 按 bucket 累加到 buckets[b]。零分配（仅用构造期预分配的 4 长缓冲）。
+   * final 由调用方用 read(index, stat) 或 StatVM.current 填写；本方法不写 final。
+   */
+  readBreakdown(index: number, stat: number, bySource: Float32Array, buckets: Float32Array): void {
+    this.checkIndex(index);
+    for (let s = 0; s < MAX_CONTRIB_PER_STAT; s++) {
+      this.readContribution(index, stat, s, this._breakdownOut);
+      const value = this._breakdownOut[CONTRIB_VALUE];
+      const kind = this._breakdownOut[CONTRIB_SOURCE_KIND] | 0;
+      const bucket = this._breakdownOut[CONTRIB_BUCKET] | 0;
+      if (kind >= 0 && kind < bySource.length) bySource[kind] += value;
+      if (bucket >= 0 && bucket < buckets.length) buckets[bucket] += value;
     }
   }
 

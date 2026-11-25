@@ -5,7 +5,8 @@
  * 槽位、稀有度、词缀池、套装、传奇特效、宝石、材料全部配置化；
  * 引擎只处理通用 Item / Modifier / Stat 结构。
  */
-import { AFFIX_POOL } from './stats';
+import { hash32 } from '../core/Rng';
+import { AFFIX_POOL, affixIndicesForTier } from './stats';
 import type {
   CubeRecipeDef,
   EquipmentDef,
@@ -21,7 +22,7 @@ import type {
 } from './types';
 
 // ---------------------------------------------------------------------------
-// 13 槽 / 4 稀有度
+// 13 槽 / 6 稀有度
 // ---------------------------------------------------------------------------
 
 export const SLOT_DEFS: readonly SlotDef[] = [
@@ -40,11 +41,17 @@ export const SLOT_DEFS: readonly SlotDef[] = [
   { id: 'offHand', name: '副手武器', category: 'weapon', legendaryGemAllowed: false },
 ] as const;
 
+/**
+ * D3 式六档稀有度：白 / 蓝 / 黄 / 传奇 / 远古传说 / 太古传说。
+ * 高档位在词缀条数、可用词缀 tier、数值系数上同时领先；传说以上才有固定名。
+ */
 export const RARITY_DEFS: readonly RarityDef[] = [
-  { id: 'common', name: '白', affixCount: 1, sockets: 0, coefficient: 1.0, silent: true },
-  { id: 'blue', name: '蓝', affixCount: 2, sockets: 1, coefficient: 1.6, silent: true },
-  { id: 'gold', name: '金', affixCount: 3, sockets: 2, coefficient: 2.4, silent: false },
-  { id: 'legendary', name: '传奇', affixCount: 3, sockets: 3, coefficient: 3.0, silent: false },
+  { id: 'common', name: '白', affixCount: 1, maxAffixTier: 1, sockets: 0, coefficient: 1.0, silent: true, fixedName: false },
+  { id: 'blue', name: '蓝', affixCount: 2, maxAffixTier: 2, sockets: 1, coefficient: 1.6, silent: true, fixedName: false },
+  { id: 'gold', name: '黄', affixCount: 3, maxAffixTier: 3, sockets: 2, coefficient: 2.4, silent: false, fixedName: false },
+  { id: 'legendary', name: '传奇', affixCount: 4, maxAffixTier: 4, sockets: 3, coefficient: 3.0, silent: false, fixedName: true },
+  { id: 'ancient', name: '远古传说', affixCount: 5, maxAffixTier: 4, sockets: 3, coefficient: 4.2, silent: false, fixedName: true },
+  { id: 'primal', name: '太古传说', affixCount: 6, maxAffixTier: 4, sockets: 3, coefficient: 5.6, silent: false, fixedName: true },
 ] as const;
 
 /** 按 id 取稀有度配置。 */
@@ -309,36 +316,101 @@ export const CUBE_SLOTS: readonly string[] = ['weapon', 'armor', 'jewelry'] as c
 // 具体装备条目（注册进 equipment Registry）
 // ---------------------------------------------------------------------------
 
+/**
+ * 按稀有度可词缀层级抽取词缀 id（不重复）。
+ * 偏移让同槽不同稀有度、不同特效之间词缀组合自然错开；roll 只决定数值大小。
+ */
 function affixIdsFor(rarity: RarityId, offset: number): string[] {
-  const count = findRarity(rarity).affixCount;
+  const def = findRarity(rarity);
+  const indices = affixIndicesForTier(def.maxAffixTier);
   const out: string[] = [];
-  for (let i = 0; i < count; i++) {
-    out.push(AFFIX_POOL[(offset + i) % AFFIX_POOL.length].id);
+  for (let i = 0; i < def.affixCount; i++) {
+    out.push(AFFIX_POOL[indices[(offset + i) % indices.length]].id);
   }
   return out;
 }
 
-/** 生成 13 槽 × 4 稀有度基础装备 + 套装装备 + 传奇装备。 */
+const BASE_NAME_PREFIX: Readonly<Record<string, string>> = {
+  legendary: '无双',
+  ancient: '远古',
+  primal: '太古',
+};
+
+/** 白/蓝/黄：按稀有度选材质前缀，再按槽位与词条主题拼出可读名称。 */
+const RANDOM_NAME_PREFIX: Readonly<Record<string, readonly string[]>> = {
+  common: ['粗皮', '布甲', '青铜', '硬木', '熟铜'],
+  blue: ['精铁', '锦缎', '寒铁', '赤铜', '狼牙'],
+  gold: ['玄铁', '虎纹', '龙鳞', '赤霄', '苍狼'],
+};
+
+/** 词缀主题词：让随机名与装备实际词条有关联，而不是乱拼字。 */
+const AFFIX_THEME: Readonly<Record<string, string>> = {
+  affix_atk: '破军',
+  affix_crit: '穿云',
+  affix_critDmg: '断岳',
+  affix_atkSpeed: '疾风',
+  affix_moveSpeed: '追风',
+  affix_maxHp: '磐石',
+  affix_armor: '坚壁',
+  affix_lifeSteal: '饮血',
+  affix_pickup: '聚宝',
+  affix_skillLevel: '通玄',
+  affix_damage: '无双',
+  affix_regen: '回春',
+  affix_expBonus: '修真',
+};
+
+function hashText(text: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
+/**
+ * 装备显示名（DESIGN §8.4）。
+ * 传说及以上返回 def.name 固定名；白/蓝/黄由 uid 确定性派生材质 + 槽位 + 词缀主题，
+ * 同一件装备在仓库、纸娃娃、预览浮层中始终同名，也不会出现无意义字符组合。
+ */
+export function equipmentName(def: EquipmentDef | undefined, uid: string): string {
+  if (def === undefined) return `未知装备（${uid}）`;
+  const rarity = findRarity(def.rarity);
+  if (rarity.fixedName) {
+    return def.name ?? LEGENDARY_EFFECT_DEFS.find((e) => e.id === def.legendaryEffectId)?.name ?? def.id;
+  }
+  const slotName = SLOT_DEFS.find((s) => s.id === def.slot)?.name ?? def.slot;
+  const prefixes = RANDOM_NAME_PREFIX[def.rarity] ?? RANDOM_NAME_PREFIX.common;
+  const seed = hashText(uid);
+  const prefix = prefixes[hash32(seed, 0x4e1a) % prefixes.length];
+  const affixId = def.affixes.length > 0
+    ? def.affixes[hash32(seed, 0x8f21) % def.affixes.length]
+    : '';
+  const theme = AFFIX_THEME[affixId] ?? '';
+  return theme.length > 0 ? `${prefix}${slotName}·${theme}` : `${prefix}${slotName}`;
+}
+
+/** 生成 13 槽 × 6 稀有度基础装备 + 套装装备 + 传奇/远古/太古装备。 */
 export const EQUIPMENT_DEFS: readonly EquipmentDef[] = (() => {
   const out: EquipmentDef[] = [];
-  const rarities: RarityId[] = ['common', 'blue', 'gold', 'legendary'];
+  const rarities: RarityId[] = ['common', 'blue', 'gold', 'legendary', 'ancient', 'primal'];
 
-  // 基础装备：每槽每稀有度一件。
+  // 基础装备：每槽每稀有度一件。传说以上的无特效基础款也给固定名。
   for (let s = 0; s < SLOT_DEFS.length; s++) {
     const slot = SLOT_DEFS[s];
     for (let r = 0; r < rarities.length; r++) {
       const rarity = rarities[r];
+      const prefix = BASE_NAME_PREFIX[rarity];
       out.push({
         id: `eq_${slot.id}_${rarity}`,
         slot: slot.id,
         rarity,
         affixes: affixIdsFor(rarity, s + r),
         sockets: findRarity(rarity).sockets,
+        ...(prefix !== undefined ? { name: `${prefix}${slot.name}` } : {}),
       });
     }
   }
 
-  // 套装装备：每套覆盖槽位各一件金色装备（带 setId）。
+  // 套装装备：每套覆盖槽位各一件黄装（带 setId），名称按 uid 随机生成。
   for (let i = 0; i < SET_DEFS.length; i++) {
     const set = SET_DEFS[i];
     for (let j = 0; j < set.slots.length; j++) {
@@ -353,20 +425,25 @@ export const EQUIPMENT_DEFS: readonly EquipmentDef[] = (() => {
     }
   }
 
-  // 传奇装备：16 个特效各挂一件，槽位依特效 slotType 选代表槽。
-  for (let i = 0; i < LEGENDARY_EFFECT_DEFS.length; i++) {
-    const effect = LEGENDARY_EFFECT_DEFS[i];
-    let slotId = 'mainHand';
-    if (effect.slotType === 'armor') slotId = SLOT_DEFS[i % 8].id;
-    else if (effect.slotType === 'jewelry') slotId = ['amulet', 'ring1', 'ring2'][i % 3];
-    out.push({
-      id: `lege_${effect.id}`,
-      slot: slotId,
-      rarity: 'legendary',
-      affixes: affixIdsFor('legendary', i),
-      sockets: 3,
-      legendaryEffectId: effect.id,
-    });
+  // 传奇及以上：16 个特效 × 3 档，共用固定特效名；远古/太古用更深的词缀组合。
+  const namedRarities: RarityId[] = ['legendary', 'ancient', 'primal'];
+  for (let r = 0; r < namedRarities.length; r++) {
+    const rarity = namedRarities[r];
+    for (let i = 0; i < LEGENDARY_EFFECT_DEFS.length; i++) {
+      const effect = LEGENDARY_EFFECT_DEFS[i];
+      let slotId = 'mainHand';
+      if (effect.slotType === 'armor') slotId = SLOT_DEFS[i % 8].id;
+      else if (effect.slotType === 'jewelry') slotId = ['amulet', 'ring1', 'ring2'][i % 3];
+      out.push({
+        id: r === 0 ? `lege_${effect.id}` : `${rarity}_eq_${effect.id}`,
+        slot: slotId,
+        rarity,
+        affixes: affixIdsFor(rarity, i + r * 3),
+        sockets: findRarity(rarity).sockets,
+        legendaryEffectId: effect.id,
+        name: effect.name,
+      });
+    }
   }
 
   return out;

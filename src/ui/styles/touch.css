@@ -66,6 +66,10 @@
 }
 
 .skill-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
   width: calc(var(--ws-hit-min) + var(--ws-space-4));
   height: calc(var(--ws-hit-min) + var(--ws-space-4));
   border-radius: 50%;
@@ -81,6 +85,13 @@
 
 .skill-button:active {
   background: radial-gradient(circle at 40% 30%, var(--ws-accent), var(--ws-bg-surface) 72%);
+}
+
+/* 技能矢量图标：随 currentColor 走主题，尺寸固定不遮挡 44px 命中区。 */
+.skill-button__icon {
+  width: 62%;
+  height: 62%;
+  pointer-events: none;
 }
 
 /* 闪避键以危险色描边做形状之外的第二重区分（4 套主题均可读）。

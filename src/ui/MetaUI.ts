@@ -14,15 +14,23 @@ import {
   CUBE_SLOTS,
   LEGENDARY_EFFECT_DEFS,
   MATERIAL_DEFS,
-  SLOT_DEFS,
+  equipmentName,
   findRarity,
   legendaryGemCost,
   legendaryGemRate,
 } from '../data/equipment';
-import { AFFIX_POOL } from '../data/stats';
+import { AFFIX_POOL, affixIndicesForTier } from '../data/stats';
 import type { EquipmentItem, SaveData } from '../game/SaveData';
 
 export type MetaTab = 'cube' | 'gems' | 'leaderboard';
+
+/** 词缀 id → AFFIX_POOL 下标（EquipmentItem 存下标，定义表存 id）。 */
+function affixIndexOf(id: string): number {
+  for (let i = 0; i < AFFIX_POOL.length; i++) {
+    if (AFFIX_POOL[i].id === id) return i;
+  }
+  return 0;
+}
 
 function btn(text: string, className: string = ''): HTMLButtonElement {
   const node = document.createElement('button');
@@ -140,10 +148,13 @@ export class MetaUI {
     const cost: Record<string, number> = { ...recipe.cost };
     if (lockFirst) cost.essence = (cost.essence ?? 0) + 20;
     if (!this.pay(cost)) return;
+    const def = this.config.equipment.tryGet(item.defId);
+    const maxTier = def === undefined ? 1 : findRarity(def.rarity).maxAffixTier;
+    const indices = affixIndicesForTier(maxTier);
     const rng = this.rngFor(`reroll:${item.uid}`);
     const count = Math.max(1, item.affixes.length);
     for (let i = lockFirst ? 1 : 0; i < count; i++) {
-      item.affixes[i] = rng.int(AFFIX_POOL.length);
+      item.affixes[i] = indices[rng.int(indices.length)];
     }
     this.commit();
   }
@@ -165,7 +176,8 @@ export class MetaUI {
     const next = candidates[rng.int(candidates.length)];
     item.defId = next.id;
     item.legendaryEffectId = next.legendaryEffectId;
-    item.affixes.length = Math.min(item.affixes.length, next.affixes.length);
+    // 传奇固定 4 词缀：直接采用目标定义的词缀 id，避免升级后仍只有 3 条。
+    item.affixes = next.affixes.map(affixIndexOf);
     this.commit();
   }
 
@@ -297,12 +309,8 @@ export class MetaUI {
       const item = items[i];
       const def = this.config.equipment.tryGet(item.defId);
       if (def === undefined) continue;
-      const slotName = SLOT_DEFS.find((s) => s.id === def.slot)?.name ?? def.slot;
       const rarityName = findRarity(def.rarity).name;
-      const effectName = item.legendaryEffectId === undefined
-        ? ''
-        : ` · ${LEGENDARY_EFFECT_DEFS.find((e) => e.id === item.legendaryEffectId)?.name ?? item.legendaryEffectId}`;
-      const row = btn(`${rarityName}·${slotName}${effectName}`);
+      const row = btn(`${rarityName}·${equipmentName(def, item.uid)}`);
       if (item.uid === this.selectedUid) row.classList.add('is-selected');
       row.addEventListener('click', () => {
         this.selectedUid = item.uid;

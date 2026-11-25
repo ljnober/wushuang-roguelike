@@ -14,11 +14,14 @@ const app: App = createApp();
 
 const registrars = import.meta.glob('./registration/*.ts', { eager: true }) as Record<
   string,
-  { register(app: App): void }
+  { register?: (app: App) => void }
 >;
 
 for (const key of Object.keys(registrars)) {
-  registrars[key].register(app);
+  // registration/ 下既有纯工具模块（如 runStatusVM.ts）不导出 register，
+  // 只对真正的 registrar 调用，避免浏览器端 pageerror 阻断 app 启动。
+  const registrar = registrars[key];
+  if (typeof registrar.register === 'function') registrar.register(app);
 }
 
 app.start();

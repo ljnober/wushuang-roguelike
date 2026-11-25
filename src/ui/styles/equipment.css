@@ -153,6 +153,14 @@
   border-color: var(--ws-rarity-legendary);
   box-shadow: var(--ws-shadow-glow);
 }
+.doll-slot.rarity-ancient {
+  border-color: var(--ws-rarity-ancient);
+  box-shadow: var(--ws-shadow-glow-ancient);
+}
+.doll-slot.rarity-primal {
+  border-color: var(--ws-rarity-primal);
+  box-shadow: var(--ws-shadow-glow-primal);
+}
 
 /* 锚点微调：DOLL_SLOT_ANCHORS 的 13 个百分比数值保持不变，仅用 margin 补偿
    密集部位热区碰撞（44px 命中区不可缩小，FC-4 / US-08-1）。

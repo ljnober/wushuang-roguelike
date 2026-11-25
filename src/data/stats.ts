@@ -51,19 +51,36 @@ export const SOURCE_PRIORITY: readonly string[] = [
   'buff',          // 临时 buff
 ] as const;
 
-/** 10 类词缀池。实际值 = 区间随机值 × 稀有度系数（见 equipment.ts RARITY_DEFS）。 */
+/**
+ * 13 类词缀池，按 tier 分层（D3 式：低档装备只能出基础属性，
+ * 传说以上才能出增伤/回复/经验等高级词缀）。
+ * 实际值 = 区间随机值 × 稀有度系数（见 equipment.ts RARITY_DEFS）。
+ * 下标即 EquipmentItem.affixes 存储值，新增只能在末尾追加。
+ */
 export const AFFIX_POOL: readonly AffixDef[] = [
-  { id: 'affix_atk', stat: 'atk', min: 3, max: 8, isPercent: false },
-  { id: 'affix_crit', stat: 'crit', min: 0.01, max: 0.04, isPercent: true },
-  { id: 'affix_critDmg', stat: 'critDmg', min: 0.05, max: 0.15, isPercent: true },
-  { id: 'affix_atkSpeed', stat: 'atkSpeed', min: 0.02, max: 0.06, isPercent: true },
-  { id: 'affix_moveSpeed', stat: 'moveSpeed', min: 4, max: 12, isPercent: false },
-  { id: 'affix_maxHp', stat: 'maxHp', min: 10, max: 30, isPercent: false },
-  { id: 'affix_armor', stat: 'armor', min: 2, max: 7, isPercent: false },
-  { id: 'affix_lifeSteal', stat: 'lifeSteal', min: 0.005, max: 0.02, isPercent: true },
-  { id: 'affix_pickup', stat: 'pickup', min: 3, max: 10, isPercent: false },
-  { id: 'affix_skillLevel', stat: 'skillLevel', min: 1, max: 1, isPercent: false },
+  { id: 'affix_atk', stat: 'atk', min: 3, max: 8, isPercent: false, tier: 1 },
+  { id: 'affix_crit', stat: 'crit', min: 0.01, max: 0.04, isPercent: true, tier: 2 },
+  { id: 'affix_critDmg', stat: 'critDmg', min: 0.05, max: 0.15, isPercent: true, tier: 2 },
+  { id: 'affix_atkSpeed', stat: 'atkSpeed', min: 0.02, max: 0.06, isPercent: true, tier: 2 },
+  { id: 'affix_moveSpeed', stat: 'moveSpeed', min: 4, max: 12, isPercent: false, tier: 1 },
+  { id: 'affix_maxHp', stat: 'maxHp', min: 10, max: 30, isPercent: false, tier: 1 },
+  { id: 'affix_armor', stat: 'armor', min: 2, max: 7, isPercent: false, tier: 1 },
+  { id: 'affix_lifeSteal', stat: 'lifeSteal', min: 0.005, max: 0.02, isPercent: true, tier: 3 },
+  { id: 'affix_pickup', stat: 'pickup', min: 3, max: 10, isPercent: false, tier: 1 },
+  { id: 'affix_skillLevel', stat: 'skillLevel', min: 1, max: 1, isPercent: false, tier: 3 },
+  { id: 'affix_damage', stat: 'damage', min: 0.02, max: 0.05, isPercent: true, tier: 4 },
+  { id: 'affix_regen', stat: 'regen', min: 2, max: 6, isPercent: false, tier: 4 },
+  { id: 'affix_expBonus', stat: 'expBonus', min: 0.03, max: 0.08, isPercent: true, tier: 4 },
 ] as const;
+
+/** 按稀有度取可 roll 的词缀下标（上层集合包含下层，避免每处重复写筛选条件）。 */
+export function affixIndicesForTier(maxTier: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < AFFIX_POOL.length; i++) {
+    if (AFFIX_POOL[i].tier <= maxTier) out.push(i);
+  }
+  return out;
+}
 
 /** 按 id 取属性定义；不存在返回 undefined（配置校验阶段使用）。 */
 export function findStat(id: string): StatDef | undefined {

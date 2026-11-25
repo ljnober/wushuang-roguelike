@@ -119,8 +119,8 @@ describe('GameConfig 注册完整性', () => {
     expect(config.bosses.all().length).toBe(8);
   });
 
-  it('词缀池 10 类 / 普通宝石 4×5 / 六阶段波次 / 双模式', () => {
-    expect(AFFIX_POOL.length).toBe(10);
+  it('词缀池 13 类 / 普通宝石 4×5 / 六阶段波次 / 双模式', () => {
+    expect(AFFIX_POOL.length).toBe(13);
     expect(GEM_DEFS.length).toBe(20);
     expect(config.gems.all().length).toBe(20);
     expect(WAVE_STAGES.length).toBe(6);

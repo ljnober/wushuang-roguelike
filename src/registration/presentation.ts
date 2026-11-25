@@ -22,6 +22,7 @@ import { TextureFactory } from '../engine/TextureFactory';
 import { BattleFxSystem } from '../engine/BattleFx';
 import { Audio } from '../engine/Audio';
 import { PortraitFactory } from '../art/PortraitFactory';
+import { skillIconsForGeneral } from '../art/SkillIconFactory';
 import { ChibiFactory } from '../art/ChibiFactory';
 import { HUDSystem, RenderSyncSystem, ViewportSystem } from '../ecs/systems/RenderSystems';
 import type { HUDLike } from '../ecs/systems/RenderSystems';
@@ -29,6 +30,9 @@ import type { GameEvent } from '../ecs/bridge/GameEventBus';
 import { HUD } from '../ui/HUD';
 import { TouchControls } from '../ui/TouchControls';
 import { CardsAndLevelUp, type LevelUpChoice } from '../ui/CardsAndLevelUp';
+import { RunStatusPanel, type RunStatusTab } from '../ui/RunStatusPanel';
+import { formatLevelUpDescription } from '../data/skillDescription';
+import { buildHUDInitial, buildRunStatusVM } from './runStatusVM';
 import { resolveSkillSlots } from '../data/skillSlots';
 import { getLevelChoices, selectLevelChoice } from '../ecs/systems/ProgressionSystems';
 import { collectRunLoot, getSkillLevel, setPendingLoadout } from '../game/RunLoot';
@@ -49,6 +53,14 @@ const TOUCH_SAFE_AREA_CSS = `
 .touch-controls .joystick{position:absolute;left:calc(env(safe-area-inset-left,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
 .touch-controls .skill-cluster{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 20px);max-width:44%}
 `;
+
+/** Tab 辅助键的切页顺序；升级弹窗优先，避免面板抢焦点。 */
+const STATUS_TAB_ORDER: readonly RunStatusTab[] = ['overview', 'equipment', 'skills', 'stats'];
+
+function nextStatusTab(tab: RunStatusTab): RunStatusTab {
+  const index = STATUS_TAB_ORDER.indexOf(tab);
+  return STATUS_TAB_ORDER[(index + 1) % STATUS_TAB_ORDER.length];
+}
 
 interface Runtime {
   renderer: Renderer | null;
@@ -140,9 +152,75 @@ export function register(app: App): void {
   const portraits = new PortraitFactory();
   const hud = host !== null ? new HUD(host) : null;
   const touch = host !== null ? new TouchControls(host) : null;
+  // 技能键直接显示当前武将的矢量技能图标，不再用「技1/技2/技3」编号。
+  touch?.setSkillIcons(skillIconsForGeneral(config, save.meta.selectedGeneral));
+  // 状态面板先于升级弹窗挂载：同为 z-index 30 时弹窗 DOM 在后，天然置顶。
+  let statusTrigger: HTMLButtonElement | null = null;
+  const statusPanel = host !== null
+    ? new RunStatusPanel({
+        host,
+        onClose: () => {
+          if (statusTrigger !== null && !statusTrigger.hidden) statusTrigger.focus();
+        },
+      })
+    : null;
   const cards = host !== null ? new CardsAndLevelUp(host) : null;
   const equipment = host !== null ? new EquipmentUI(host, config) : null;
   const meta = host !== null ? new MetaUI(host, config) : null;
+
+  /** presentation 唯一的 VM 入口：只读组装，面板不持有 ECS 引用。 */
+  const buildVM = (): ReturnType<typeof buildRunStatusVM> =>
+    buildRunStatusVM({
+      app,
+      config,
+      generalId: save.meta.selectedGeneral,
+      controlMode: save.meta.settings.controlMode,
+    });
+
+  /** 装备/宝石/升级事件后立刻刷新可见面板；面板不可见时零开销。 */
+  const refreshStatusPanel = (): void => {
+    if (statusPanel?.visible === true) statusPanel.update(buildVM());
+  };
+
+  if (host !== null) {
+    statusTrigger = document.createElement('button');
+    statusTrigger.type = 'button';
+    statusTrigger.className = 'ws-status-trigger';
+    statusTrigger.textContent = '角色状态';
+    statusTrigger.hidden = true;
+    statusTrigger.addEventListener('click', () => {
+      if (cards?.visible === true) return;
+      if (statusPanel?.visible === true) statusPanel.close();
+      else statusPanel?.open(buildVM());
+    });
+    host.append(statusTrigger);
+  }
+
+  /**
+   * 升级弹窗暂停状态机：暂停只写 presentation 侧的 session.running，
+   * 且仅在 manual + battle + running=1 三守卫全部通过时生效；幂等。
+   */
+  let levelUpPaused = false;
+  const battleRunning = (): { get(): number; set(v: number): void } | null => {
+    const s = app.state.session as unknown as { running?: number } | null;
+    if (s === null || typeof s.running !== 'number') return null;
+    return { get: () => s.running as number, set: (v) => { s.running = v; } };
+  };
+  const pauseForLevelUp = (): void => {
+    if (save.meta.settings.controlMode === 'auto') return;
+    if (app.sceneManager.current?.id !== 'battle') return;
+    if (levelUpPaused) return;
+    const running = battleRunning();
+    if (running === null || running.get() !== 1) return;
+    running.set(0);
+    levelUpPaused = true;
+  };
+  const resumeFromLevelUp = (): void => {
+    if (!levelUpPaused) return;
+    levelUpPaused = false;
+    const running = battleRunning();
+    if (running !== null && app.sceneManager.current?.id === 'battle') running.set(1);
+  };
 
   // 按冻结接口 ThemePickerLike 给配装页注入换肤入口；T01 只依赖接口、不 import 实现类。
   // 结构性调用使本文件与 EquipmentUI 的并行开发解耦（方法缺失时安全跳过，不影响其它功能）。
@@ -175,6 +253,21 @@ export function register(app: App): void {
       runtime.renderer?.resize(host.clientWidth, host.clientHeight);
     });
     window.addEventListener('pointerdown', () => audio.unlock(), { once: true });
+    // Tab 打开/切页，Esc 关闭；仅 battle 场景生效，升级弹窗优先。
+    window.addEventListener('keydown', (event: KeyboardEvent): void => {
+      if (app.sceneManager.current?.id !== 'battle') return;
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        if (cards?.visible === true) return;
+        if (statusPanel?.visible === true) statusPanel.setTab(nextStatusTab(statusPanel.tab));
+        else statusPanel?.open(buildVM());
+      } else if (event.key === 'Escape') {
+        if (statusPanel?.visible === true) {
+          event.preventDefault();
+          statusPanel.close();
+        }
+      }
+    });
   }
 
   // 渲染器工厂：App.start() 会异步调用；失败时在工厂内降级 headless。
@@ -249,18 +342,24 @@ export function register(app: App): void {
   cards?.setAutoMode(save.meta.settings.controlMode === 'auto');
 
   let resultShown = false;
+  let vmRefreshTick = 0;
   const hudBridge: HUDLike = {
     onEvent(event: GameEvent): void {
       if (hud !== null) hud.onEvent(event);
       if (event.type === GameEventType.LevelUp) {
         if (app.sceneManager.current?.id === 'battle') showLevelUp();
         audio.play('levelup');
+        refreshStatusPanel();
+      } else if (event.type === GameEventType.Equip || event.type === GameEventType.GemSocket) {
+        refreshStatusPanel();
       } else if (event.type === GameEventType.Kill || event.type === GameEventType.Damage) {
         audio.play(event.type === GameEventType.Kill ? 'pickup' : 'hit');
       } else if (event.type === GameEventType.BossWarn) {
         audio.play('bossWarn');
       } else if (event.type === GameEventType.Victory || event.type === GameEventType.Defeat) {
         audio.play('levelup');
+        resumeFromLevelUp(); // 暂停态不得带入结算；endBattle 自行维持 running=0
+        statusPanel?.close();
         if (resultShown) return;
         resultShown = true;
         const shown = hud !== null ? hud.snapshot() : null;
@@ -329,7 +428,7 @@ export function register(app: App): void {
         choices.push({
           id: skill.id,
           name: skill.name,
-          description: `技能等级 ${level} · 伤害 ×${Math.pow(1.3, level - 1).toFixed(2)} · ${skill.tags.join(' · ')}`,
+          description: formatLevelUpDescription(skill, level),
           level,
           tags: skill.tags,
         });
@@ -343,6 +442,8 @@ export function register(app: App): void {
     if (choices.length === 0) return;
     // auto 模式由 ECS 默认选第一项，弹窗会挡住战斗；手动模式才等待玩家点选。
     if (save.meta.settings.controlMode === 'auto') return;
+    pauseForLevelUp();
+    statusPanel?.close(); // 面板与升级弹窗互斥
     cards.show(choices, (choice) => {
       for (let i = 0; i < choices.length; i++) {
         if (choices[i].id === choice.id) selectLevelChoice(0, i);
@@ -351,6 +452,7 @@ export function register(app: App): void {
       upgrades[choice.id] = (upgrades[choice.id] ?? 0) + 1;
       saveSystem.save(save);
       audio.play('levelup');
+      resumeFromLevelUp();
     });
   };
 
@@ -362,11 +464,13 @@ export function register(app: App): void {
 
   const battleLauncher: BattleLauncher = (request) => {
     resultShown = false;
+    resumeFromLevelUp(); // 清理上一局残留的升级暂停，再隐藏弹窗
     cards?.hide(); // P0：避免上一局的未点选弹窗带入新一局
-    hud?.reset();
+    statusPanel?.close();
     runtime.pools?.releaseAll();
     runtime.viewport.reset();
     save.meta.selectedGeneral = request.generalId;
+    touch?.setSkillIcons(skillIconsForGeneral(config, request.generalId));
     save.run = {
       mode: request.mode,
       generalId: request.generalId,
@@ -396,17 +500,27 @@ export function register(app: App): void {
       // 造成"多个英雄 / 闪烁"的观感。headless 整局测试仍用默认 2 影子，不受影响。
       session.startBattle(request.mode, request.generalId, 0);
     }
-    // 手动模式不要由 ECS 预选升级卡（否则玩家点选会二次升级）。
-    (app.state.session as unknown as { autoLevel?: number }).autoLevel =
-      save.meta.settings.controlMode === 'auto' ? 1 : 0;
-    // startBattle 会替换命令总线，因此自动/Manual 状态必须在开战后重新下发，
-    // 否则默认 auto 存档只在 UI 上显示"自动"，ECS 仍按手动空转。
-    pushCommand(
-      CommandType.AutoToggle,
-      save.meta.settings.controlMode === 'auto' ? 1 : 0,
-      0,
-      0,
-    );
+    // session 尚未建立时（异常/未启动路径）跳过写入，避免空引用扩散。
+    if (app.state.session !== null) {
+      // 手动模式不要由 ECS 预选升级卡（否则玩家点选会二次升级）。
+      (app.state.session as unknown as { autoLevel?: number }).autoLevel =
+        save.meta.settings.controlMode === 'auto' ? 1 : 0;
+      // startBattle 会替换命令总线，因此自动/Manual 状态必须在开战后重新下发，
+      // 否则默认 auto 存档只在 UI 上显示"自动"，ECS 仍按手动空转。
+      pushCommand(
+        CommandType.AutoToggle,
+        save.meta.settings.controlMode === 'auto' ? 1 : 0,
+        0,
+        0,
+      );
+    }
+    // startBattle 已初始化 StatBlock / session：首帧即用真值重置 HUD，消除 120/120 与 100 分闪帧。
+    hud?.reset(buildHUDInitial({
+      app,
+      config,
+      generalId: request.generalId,
+      controlMode: save.meta.settings.controlMode,
+    }));
   };
 
   const deps: SceneDeps = {
@@ -433,7 +547,9 @@ export function register(app: App): void {
       runtime.pools?.releaseAll();
       runtime.viewport.reset();
       resultShown = false;
+      resumeFromLevelUp();
       cards?.hide(); // P0：场景重开路径同样清理常驻升级弹窗
+      statusPanel?.close();
     },
   };
 
@@ -471,6 +587,14 @@ export function register(app: App): void {
     }
     runtime.hudSystem?.run();
     hud?.updateFromWorld(world, app.state.session);
+    const inBattle = app.sceneManager.current?.id === 'battle';
+    if (statusTrigger !== null && statusTrigger.hidden === inBattle) {
+      statusTrigger.hidden = !inBattle;
+    }
+    // 面板不暂停战斗：低频刷新真值 VM（约 5Hz），避免每帧重建 13 槽 DOM。
+    if (statusPanel?.visible === true && ++vmRefreshTick % 12 === 0) {
+      statusPanel.update(buildVM());
+    }
   }, 'HUDSystem');
 
   app.registerRenderSystem(40, () => {

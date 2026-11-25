@@ -7,7 +7,7 @@
 import { MAX_PLAYERS } from '../core/Constants';
 import { hash32, Rng } from '../core/Rng';
 import { AFFIX_POOL, findStat } from '../data/stats';
-import { findRarity, LEGENDARY_EFFECT_DEFS, SET_DEFS } from '../data/equipment';
+import { findRarity, LEGENDARY_EFFECT_DEFS, SET_DEFS, SLOT_DEFS } from '../data/equipment';
 import type { EquipmentDef, GemDef } from '../data/types';
 import type { EquipmentItem, GemItem } from './SaveData';
 import type { Eid } from '../ecs/bit/types';
@@ -61,6 +61,21 @@ function hashUid(uid: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < uid.length; i++) h = Math.imul(h ^ uid.charCodeAt(i), 0x01000193);
   return h >>> 0;
+}
+
+/**
+ * 按与 compileEquippedItem 完全一致的口径重算单条词缀真值。
+ *
+ * 口径：AFFIX_POOL[item.affixes[affixIndex] % AFFIX_POOL.length] 取词条定义；
+ * 种子 hash32(hashUid(item.uid), affixIndex, 0xa771)；roll 后按稀有度系数放大，
+ * 最后四舍五入到 3 位小数。非法下标返回 0，不改变任何 Rng 状态。
+ */
+export function affixValueOf(item: EquipmentItem, affixIndex: number, rarityCoefficient: number): number {
+  if (affixIndex < 0 || affixIndex >= item.affixes.length) return 0;
+  const affix = AFFIX_POOL[item.affixes[affixIndex] % AFFIX_POOL.length];
+  if (affix === undefined) return 0;
+  const rng = new Rng(hash32(hashUid(item.uid), affixIndex, 0xa771));
+  return Math.round((affix.min + rng.next() * (affix.max - affix.min)) * rarityCoefficient * 1000) / 1000;
 }
 
 function statIndexOf(state: SimState, id: string): number {
@@ -139,8 +154,8 @@ function compileEquippedItem(state: SimState, owner: Eid, item: EquipmentItem, l
     if (affixId === undefined) continue;
     const stat = statIndexOf(state, affixId.stat);
     if (stat < 0) continue;
-    const rng = new Rng(hash32(hashUid(item.uid), i, 0xa771));
-    const value = Math.round((affixId.min + rng.next() * (affixId.max - affixId.min)) * rarity.coefficient * 1000) / 1000;
+    // 单一来源：与面板展示共用的 affixValueOf，抽取前后编译结果逐位一致。
+    const value = affixValueOf(item, i, rarity.coefficient);
     const mod = createModifier(state, owner, {
       stat, op: 'ADD', value, bucket: 0, priority: 1, sourceKind: sourceKindOf('affix'), group: 0,
     });
@@ -204,16 +219,30 @@ function equipCore(state: SimState, playerId: number, owner: Eid, item: Equipmen
   recompileAll(state, playerId, owner);
 }
 
+/** 补全 13 槽：以 SLOT_DEFS 为骨架，空槽为 null；返回新 Record，不改内部 Map。 */
 export function getEquipped(playerId: number): Record<string, EquipmentItem | null> {
   const loot = lootByPlayer[playerId];
   const out: Record<string, EquipmentItem | null> = {};
+  for (let i = 0; i < SLOT_DEFS.length; i++) out[SLOT_DEFS[i].id] = null; // 先铺 13 槽
   if (loot === undefined) return out;
   const iter = loot.equipped.entries();
   for (let i = 0; i < loot.equipped.size; i++) {
     const entry = iter.next().value as [string, EquipmentItem];
-    out[entry[0]] = entry[1];
+    if (entry[0] in out) out[entry[0]] = entry[1]; // 只覆盖已知槽，杜绝脏键
   }
   return out;
+}
+
+/** 只读背包快照（RS-09，P1 展示用；本轮先落接口）；返回 slice，调用方改不影响结算。 */
+export function getBag(playerId: number): readonly EquipmentItem[] {
+  const loot = lootByPlayer[playerId];
+  return loot === undefined ? [] : loot.bag.slice();
+}
+
+/** 只读宝石背包快照；返回 slice，调用方改不影响结算。 */
+export function getGemBag(playerId: number): readonly GemItem[] {
+  const loot = lootByPlayer[playerId];
+  return loot === undefined ? [] : loot.gems.slice();
 }
 
 export function getSkillLevel(playerId: number, slot: number): number {

@@ -1,0 +1,197 @@
+/* 局内角色状态面板样式（ARCH_RUN_STATUS.md §9 / §3.2）。
+ * 只用 --ws-* 令牌，零裸色；.overlay.ws-status 与升级弹窗同为 z-index 30，
+ * 面板先挂载、弹窗后挂载，故弹窗天然置顶。
+ */
+
+.overlay.ws-status {
+  z-index: 30;
+}
+
+.ws-status-trigger {
+  position: fixed;
+  top: var(--ws-space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  padding: var(--ws-space-1) var(--ws-space-3);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text);
+  font-size: var(--ws-font-sm);
+  box-shadow: var(--ws-btn-shadow);
+  cursor: pointer;
+}
+
+.ws-status-trigger[hidden] {
+  display: none;
+}
+
+.ws-status .panel,
+.overlay.ws-status .panel {
+  width: min(920px, 100%);
+}
+
+.ws-status__header {
+  display: flex;
+  align-items: center;
+  gap: var(--ws-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--ws-space-3);
+}
+
+.ws-status__title {
+  margin: 0;
+  font-size: var(--ws-font-xl);
+  color: var(--ws-primary);
+}
+
+.ws-status__tabs {
+  display: flex;
+  gap: var(--ws-space-1);
+  flex: 1;
+}
+
+.ws-status__tab {
+  min-height: var(--ws-hit-min);
+  padding: var(--ws-space-1) var(--ws-space-3);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text-muted);
+  cursor: pointer;
+}
+
+.ws-status__tab.is-active {
+  color: var(--ws-on-primary);
+  background: var(--ws-btn-primary-bg);
+  border-color: var(--ws-btn-primary-border);
+}
+
+.ws-status__close {
+  min-height: var(--ws-hit-min);
+  min-width: var(--ws-hit-min);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-btn-bg);
+  color: var(--ws-text);
+  font-size: var(--ws-font-lg);
+  cursor: pointer;
+}
+
+.ws-status__pages {
+  max-height: 68vh;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+.ws-status__page[hidden] {
+  display: none;
+}
+
+.ws-status__line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ws-space-3);
+  padding: var(--ws-space-1) 0;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.ws-status__label {
+  color: var(--ws-text-muted);
+  font-size: var(--ws-font-sm);
+}
+
+.ws-status__value {
+  color: var(--ws-stat-up);
+  font-size: var(--ws-font-md);
+}
+
+.ws-status__slot-grid,
+.ws-status__skill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--ws-space-2);
+}
+
+.ws-status__slot,
+.ws-status__skill,
+.ws-status__stat {
+  padding: var(--ws-space-2);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-raised);
+  color: var(--ws-text);
+}
+
+.ws-status__slot--empty {
+  border-color: var(--ws-slot-empty);
+  color: var(--ws-text-muted);
+}
+
+.ws-status__slot-name,
+.ws-status__skill-name,
+.ws-status__stat-name {
+  color: var(--ws-primary);
+  font-size: var(--ws-font-sm);
+}
+
+.ws-status__slot-item {
+  margin: var(--ws-space-1) 0;
+  font-size: var(--ws-font-md);
+}
+
+.ws-status__slot-rarity,
+.ws-status__affix,
+.ws-status__gem,
+.ws-status__sockets,
+.ws-status__skill-desc,
+.ws-status__skill-gain,
+.ws-status__skill-meta {
+  font-size: var(--ws-font-xs);
+  color: var(--ws-text-muted);
+}
+
+.ws-status__skill-gain {
+  color: var(--ws-stat-up);
+}
+
+.ws-status__stat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--ws-space-2);
+}
+
+.ws-status__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-1);
+}
+
+.ws-status__stat-value {
+  color: var(--ws-stat-up);
+  font-size: var(--ws-font-md);
+}
+
+.ws-status__breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-1);
+}
+
+.ws-status__source {
+  padding: var(--ws-space-1);
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  color: var(--ws-accent);
+  font-size: var(--ws-font-xs);
+}
+
+@media (max-width: 640px) {
+  .ws-status__slot-grid,
+  .ws-status__skill-grid,
+  .ws-status__stat-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

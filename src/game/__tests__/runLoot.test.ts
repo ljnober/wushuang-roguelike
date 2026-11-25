@@ -7,9 +7,15 @@ import { add, query } from '../../ecs/bit/adapter';
 import { Dead, Health, Pickup, PlayerTag, Position, StatBlock } from '../../ecs/bit/components';
 import { getSimTick, registerSimSystem, resetScheduler, stepTick } from '../../ecs/scheduler';
 import { createBattleState, createBattleSystems } from '../../registration/systems';
+import { findRarity, SLOT_DEFS } from '../../data/equipment';
+import { AFFIX_POOL } from '../../data/stats';
+import type { EquipmentItem, GemItem } from '../SaveData';
 import {
+  affixValueOf,
   collectRunLoot,
+  getBag,
   getEquipped,
+  getGemBag,
   getSkillLevel,
   grantLoot,
   levelUpSkill,
@@ -146,5 +152,96 @@ describe('局内技能成长', () => {
     expect(levelUpSkill(0, 1)).toBe(2);
     expect(getSkillLevel(0, 1)).toBe(2);
     expect(levelUpSkill(0, 9)).toBe(0);
+  });
+});
+
+/** 面板只读访问器（ARCH_RUN_STATUS.md §3.6）：13 槽骨架 / 背包快照 / 词缀真值口径。 */
+describe('局内战利品只读访问器', () => {
+  it('getEquipped(0) 恰好 13 槽，键集合等于 SLOT_DEFS，空槽为 null', () => {
+    resetRunLoot();
+    makeRig();
+
+    const equipped = getEquipped(0);
+
+    const keys = Object.keys(equipped).sort();
+    expect(keys).toEqual(SLOT_DEFS.map((s) => s.id).sort());
+    expect(keys).toHaveLength(13);
+    for (const slot of SLOT_DEFS) {
+      expect(equipped[slot.id], `${slot.id} 空槽应为 null`).toBeNull();
+    }
+  });
+
+  it('已穿戴槽仍返回实例，返回新 Record 不回写内部状态', () => {
+    resetRunLoot();
+    const { state, player } = makeRig();
+    const defs = state.config.equipment.all();
+    const idx = defs.findIndex((d) => d.rarity === 'legendary' && d.affixes.includes('affix_atk'));
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const item = makeDroppedEquipment(state, idx + 1, 0x77, 99, battleSession(state).roomSeed)!;
+    grantLoot(state, 0, player, item, false);
+    stepTick(state, getSimTick() + 1);
+
+    const equipped = getEquipped(0);
+    expect(equipped[defs[idx].slot]?.uid).toBe(item.uid);
+    expect(SLOT_DEFS.filter((s) => equipped[s.id] !== null)).toHaveLength(1);
+    for (const slot of SLOT_DEFS) {
+      if (slot.id !== defs[idx].slot) expect(equipped[slot.id]).toBeNull();
+    }
+    delete equipped[defs[idx].slot];
+    expect(getEquipped(0)[defs[idx].slot]?.uid).toBe(item.uid);
+  });
+
+  it('getBag / getGemBag 返回数组快照，越界 playerId 返回空数组', () => {
+    resetRunLoot();
+    const { state, player } = makeRig();
+    const equipment = makeDroppedEquipment(state, 1, 0x11, 5, battleSession(state).roomSeed)!;
+    grantLoot(state, 0, player, equipment, false);
+    const gem = makeDroppedGem(state, 1, 6, battleSession(state).roomSeed)!;
+    grantLoot(state, 0, player, gem, true);
+
+    expect(Array.isArray(getBag(0))).toBe(true);
+    expect(Array.isArray(getGemBag(0))).toBe(true);
+    expect(getBag(0)).toHaveLength(1);
+    expect(getGemBag(0)).toHaveLength(1);
+    expect(getBag(999)).toEqual([]);
+    expect(getGemBag(-1)).toEqual([]);
+    (getBag(0) as EquipmentItem[]).length = 0;
+    (getGemBag(0) as GemItem[]).length = 0;
+    expect(getBag(0)).toHaveLength(1);
+    expect(getGemBag(0)).toHaveLength(1);
+  });
+
+  it('affixValueOf 与编译进 StatBlock 的词缀真值一致（误差 1e-3）', () => {
+    resetRunLoot();
+    const { state, player } = makeRig();
+    const defs = state.config.equipment.all();
+    // 选无套装 / 无传奇特效的黄装，隔离出词缀对 atk 的净贡献。
+    const idx = defs.findIndex(
+      (d) => d.rarity === 'gold' && d.setId === undefined
+        && d.legendaryEffectId === undefined && d.affixes.includes('affix_atk'),
+    );
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const item = makeDroppedEquipment(state, idx + 1, 0x99, 77, battleSession(state).roomSeed)!;
+    const coefficient = findRarity(defs[idx].rarity).coefficient;
+    const before = blockValue(state, player, 'atk');
+
+    grantLoot(state, 0, player, item, false);
+    stepTick(state, getSimTick() + 1);
+
+    let expected = 0;
+    for (let i = 0; i < item.affixes.length; i++) {
+      const affix = AFFIX_POOL[item.affixes[i] % AFFIX_POOL.length];
+      if (affix.stat === 'atk') expected += affixValueOf(item, i, coefficient);
+    }
+    expect(expected).toBeGreaterThan(0);
+    expect(blockValue(state, player, 'atk') - before).toBeCloseTo(expected, 3);
+  });
+
+  it('affixValueOf 非法词缀下标返回 0', () => {
+    resetRunLoot();
+    const { state } = makeRig();
+    const item = makeDroppedEquipment(state, 1, 0x22, 3, battleSession(state).roomSeed)!;
+    expect(affixValueOf(item, -1, 1)).toBe(0);
+    expect(affixValueOf(item, item.affixes.length, 1)).toBe(0);
   });
 });

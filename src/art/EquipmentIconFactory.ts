@@ -57,8 +57,8 @@ interface RarityStyle {
 }
 
 /**
- * 稀有度 4 档（PRD §5.2）。图标以 data URL 内联渲染，无法读取页面 CSS 变量，
- * 因此使用与主题无关的基准色（白 → 蓝 → 金 → 橙），保证任何主题下都可辨识。
+ * 稀有度 6 档（DESIGN §8.4）。图标以 data URL 内联渲染，无法读取页面 CSS 变量，
+ * 因此使用与主题无关的基准色（灰 → 蓝 → 金 → 橙 → 翠 → 紫），保证任何主题下都可辨识。
  */
 const RARITY_STYLES: Readonly<Record<RarityId, RarityStyle>> = {
   common: {
@@ -85,6 +85,18 @@ const RARITY_STYLES: Readonly<Record<RarityId, RarityStyle>> = {
     glow: 2.6,
     runes: true,
   },
+  ancient: {
+    name: '远古传说',
+    frame: '#54d6a0',
+    glow: 3.2,
+    runes: true,
+  },
+  primal: {
+    name: '太古传说',
+    frame: '#c77dff',
+    glow: 3.8,
+    runes: true,
+  },
 };
 
 const RARITY_ORDER: Readonly<Record<RarityId, number>> = {
@@ -92,6 +104,8 @@ const RARITY_ORDER: Readonly<Record<RarityId, number>> = {
   blue: 1,
   gold: 2,
   legendary: 3,
+  ancient: 4,
+  primal: 5,
 };
 
 /** 槽位中文名（写入 <title>，兼作无障碍标签）。 */

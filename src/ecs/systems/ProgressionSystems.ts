@@ -129,7 +129,18 @@ export class DropSystem {
       const tableId = isBoss ? 'drop_boss' : isElite ? 'drop_elite' : 'drop_common';
       const table = state.config.drops.tryGet(tableId);
       if (table !== undefined && table.entries.length > 0 && this.rng.next() < 0.4) {
-        const entry = table.entries[this.rng.int(table.entries.length)];
+        // 按配置权重抽取条目（旧实现是等概率，新增远古/太古后必须让低权重真正稀有）。
+        let totalWeight = 0;
+        for (let k = 0; k < table.entries.length; k++) totalWeight += Math.max(0, table.entries[k].weight);
+        let cursor = this.rng.next() * totalWeight;
+        let entry = table.entries[table.entries.length - 1];
+        for (let k = 0; k < table.entries.length; k++) {
+          cursor -= Math.max(0, table.entries[k].weight);
+          if (cursor < 0) {
+            entry = table.entries[k];
+            break;
+          }
+        }
         const qty = entry.minQty + this.rng.int(Math.max(1, entry.maxQty - entry.minQty + 1));
         if (entry.itemId.startsWith('equipment_')) {
           // 装备条目：按稀有度筛出具体配置，cfgId = 1-based 注册表下标。
