@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: '22', cache: 'npm' }
+        with: { node-version: '24', cache: 'npm' }
       - run: npm ci
       - run: npm run typecheck
       - name: 整局确定性模拟
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: '22', cache: 'npm' }
+        with: { node-version: '24', cache: 'npm' }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Playwright 整局快进（webServer 自动拉起 vite dev）
